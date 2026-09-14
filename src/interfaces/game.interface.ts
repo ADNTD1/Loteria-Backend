@@ -8,3 +8,5 @@ export interface playerBoard {
   accountNumber: string,
   cards: Card[]
 }
+
+export type Deck = Card[];
