@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum RoomStatus {
+  WAITING
+  PLAYING
+  FINISHED
+}
+
+model User {
+  id            String @id @default(uuid())
+  accountNumber String @unique
+  name          String
+  totalWins     Int    @default(0)
+
+  hostedRooms Room[]       @relation("RoomHost")
+  roomPlayers RoomPlayer[]
+  boards      PlayerBoard[]
+}
+
+model Card {
+  id     Int    @id
+  name   String
+  imgUrl String
+
+  boardCards BoardCard[]
+}
+
+model Room {
+  id                String     @id @default(uuid())
+  hostAccountNumber String
+  code              String     @unique
+  status            RoomStatus @default(WAITING)
+  createdAt         DateTime   @default(now())
+
+  host User @relation("RoomHost", fields: [hostAccountNumber], references: [accountNumber])
+
+  players RoomPlayer[]
+}
+
+model RoomPlayer {
+  id     String @id @default(uuid())
+  roomId String
+  userId String
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+model PlayerBoard {
+  id            String @id @default(uuid())
+  userId        String
+  accountNumber String
+
+  user User @relation(fields: [userId], references: [id])
+
+  cards BoardCard[]
+}
+
+model BoardCard {
+  id      String @id @default(uuid())
+  boardId String
+  cardId  Int
+
+  board PlayerBoard @relation(fields: [boardId], references: [id])
+  card  Card        @relation(fields: [cardId], references: [id])
+
+  @@unique([boardId, cardId])
+}

@@ -5,3 +5,5 @@
 .env.production
 *.pem
 *.key
+
+/src/generated/prisma
