@@ -1,26 +1,56 @@
 import type { Request, Response } from "express";
 import { CardRepository } from "../repositories/card.repository.js";
-
+import { generateRandomBoard } from "../utils/generateRandomBoard.js";
 
 const cardRepository = new CardRepository();
 
-const cards = await cardRepository.findAll();
+export const getAllCards = async (req: Request, res: Response) => {
+  try {
+    const cards = await cardRepository.findAll();
 
-export const getAllCards = (req: Request, res: Response) => {
+    if (!cards || cards.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        message: "No se encontraron cartas"
+      });
+    }
 
-  if (!cards) {
-    res.status(400).json({
+    return res.json({
+      ok: true,
+      data: cards
+    });
+  } catch (error) {
+    return res.status(500).json({
       ok: false,
-      message: "no se encontraron cartas, revisa tu conexion a internet"
-    })
+      message: "Error al obtener las cartas"
+    });
   }
+};
 
-  return res.json({
-    ok: true,
-    data: cards
-  })
-}
+export const getRandomBoard = async (req: Request, res: Response) => {
+  try {
 
-export const getRandomBoard =  (req: Request, res: Response) => {
+    const { accountNumber } = req.body;
 
-}
+    if (!accountNumber) {
+      return res.status(400).json({
+        ok: false,
+        message: "El accountNumber es obligatorio"
+      });
+    }
+
+    const cards = await cardRepository.findAll();
+    const board = generateRandomBoard(accountNumber, cards);
+
+    return res.json({
+      ok: true,
+      data: board
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({
+      ok: false,
+      message: error.message || "Error al generar la tabla"
+    });
+  }
+};
