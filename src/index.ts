@@ -2,6 +2,7 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import userRouter from './routes/user.routes.js';
 import roomRouter from './routes/room.routes.js';
+import gameRouter from './routes/game.routes.js'
 
 const app = express();
 const PORT = process.env.port || 3000;
@@ -11,6 +12,7 @@ app.use(express.json());
 
 app.use('/api/users', userRouter);
 app.use('/api/rooms', roomRouter);
+app.use('/api/game', gameRouter);
 
 
 app.listen(PORT, () => {
