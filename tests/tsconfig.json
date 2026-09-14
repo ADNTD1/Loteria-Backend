@@ -1,0 +1,10 @@
+{
+  // Permite que VS Code revise los tipos de las pruebas.
+  // El build (npm run build) sigue usando solo el tsconfig.json de la raíz.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": ["**/*.ts", "../src/**/*.ts"]
+}
