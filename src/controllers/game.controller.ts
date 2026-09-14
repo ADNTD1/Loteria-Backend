@@ -1,84 +1,54 @@
 import type { Request, Response } from "express";
+import { AppError } from "../errors/app.error.js";
 import { CardRepository } from "../repositories/card.repository.js";
 import { generateRandomBoard } from "../utils/generateRandomBoard.js";
 import { shuffleDeck } from "../utils/suffle-deck.js";
 
 const cardRepository = new CardRepository();
 
+// Sin try/catch: cualquier error llega al middleware global (error.middleware.ts).
+
 export const getAllCards = async (req: Request, res: Response) => {
-  try {
-    const cards = await cardRepository.findAll();
+  const cards = await cardRepository.findAll();
 
-    if (!cards || cards.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        message: "No se encontraron cartas"
-      });
-    }
-
-    return res.json({
-      ok: true,
-      data: cards
-    });
-  } catch (error) {
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener las cartas"
-    });
+  if (cards.length === 0) {
+    throw new AppError("No se encontraron cartas", 404);
   }
+
+  return res.json({
+    ok: true,
+    data: cards
+  });
 };
 
 export const getRandomBoard = async (req: Request, res: Response) => {
-  try {
+  // En Express 5 req.body es undefined si no mandan un JSON.
+  const { accountNumber } = req.body ?? {};
 
-    const { accountNumber } = req.body;
-
-    if (!accountNumber) {
-      return res.status(400).json({
-        ok: false,
-        message: "El accountNumber es obligatorio"
-      });
-    }
-
-    const cards = await cardRepository.findAll();
-    const board = generateRandomBoard(accountNumber, cards);
-
-    return res.json({
-      ok: true,
-      data: board
-    });
-
-  } catch (error: any) {
-    return res.status(500).json({
-      ok: false,
-      message: error.message || "Error al generar la tabla"
-    });
+  if (!accountNumber) {
+    throw new AppError("El accountNumber es obligatorio", 400);
   }
 
+  const cards = await cardRepository.findAll();
+  const board = generateRandomBoard(accountNumber, cards);
+
+  return res.json({
+    ok: true,
+    data: board
+  });
 };
 
 export const getShuffledDeck = async (req: Request, res: Response) => {
-  try {
-    const cards = await cardRepository.findAll();
+  const cards = await cardRepository.findAll();
 
-    if (!cards || cards.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        message: "No se encontraron cartas para barajear"
-      });
-    }
-
-
-    const shuffledDeck = shuffleDeck(cards);
-
-    return res.json({
-      ok: true,
-      data: shuffledDeck
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      ok: false,
-      message: error.message || "Error al generar el mazo inicial"
-    });
+  if (cards.length === 0) {
+    throw new AppError("No se encontraron cartas para barajear", 404);
   }
+
+  const shuffledDeck = shuffleDeck(cards);
+
+  return res.json({
+    ok: true,
+    data: shuffledDeck
+  });
 };
