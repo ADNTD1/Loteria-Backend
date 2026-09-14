@@ -1,8 +1,12 @@
-import { Router } from 'express';
-import { getUserByAccountNumber } from '../controllers/user.controller.js';
+import { Router } from "express";
+import { loginWithAccountNumber, logoutUser } from "../controllers/user.controller.js";
 
 const router = Router();
 
-router.get('/auth/:accountNumber', getUserByAccountNumber);
+// POST http://localhost:3000/api/users/login
+router.post("/login", loginWithAccountNumber);
+
+// POST http://localhost:3000/api/users/logout
+router.post("/logout", logoutUser);
 
 export default router;
