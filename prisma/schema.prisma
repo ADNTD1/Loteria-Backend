@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -20,9 +20,11 @@ model User {
   name          String
   totalWins     Int    @default(0)
 
-  hostedRooms Room[]       @relation("RoomHost")
+  hostedRooms Room[]        @relation("RoomHost")
   roomPlayers RoomPlayer[]
   boards      PlayerBoard[]
+
+  matchesWon Match[]
 }
 
 model Card {
@@ -75,4 +77,15 @@ model BoardCard {
   card  Card        @relation(fields: [cardId], references: [id])
 
   @@unique([boardId, cardId])
+}
+
+model Match {
+  id            String   @id @default(uuid())
+  roomCode      String
+  winnerAccount String
+  totalPlayers  Int
+  winMode       String   @default("FULL")
+  playedAt      DateTime @default(now())
+
+  winner User @relation(fields: [winnerAccount], references: [accountNumber])
 }
