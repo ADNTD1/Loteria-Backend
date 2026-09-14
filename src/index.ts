@@ -4,7 +4,8 @@ import swaggerUi from 'swagger-ui-express'
 
 import userRouter from './routes/user.routes.js';
 import roomRouter from './routes/room.routes.js';
-import gameRouter from './routes/game.routes.js'
+import gameRouter from './routes/game.routes.js';
+import gameSessionRouter from './routes/gameSession.routes.js';
 
 const app = express();
 const PORT = process.env.port || 3000;
@@ -16,6 +17,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/users', userRouter);
 app.use('/api/rooms', roomRouter);
 app.use('/api/game', gameRouter);
+app.use('/api/game-session', gameSessionRouter);
 
 
 app.listen(PORT, () => {
