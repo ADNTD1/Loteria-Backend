@@ -95,6 +95,8 @@ export const createRoom = async (req: Request, res: Response) => {
  * TEMPORAL: todavía utiliza activeRooms.
  * Se migrará a Prisma junto con RF-02/RF-03.
  */
+ 
+ /**
 export const getRoomByCode = (req: Request, res: Response) => {
   const { code } = req.params;
 
@@ -114,6 +116,45 @@ export const getRoomByCode = (req: Request, res: Response) => {
     data: room
   });
 };
+ */
+
+
+export const getRoomByCode = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+
+    const room = await prisma.room.findUnique({
+      where: {
+        code
+      },
+      include: { // incluir jugadores en la sala
+        players: true
+      }
+    });
+
+    if (!room) {
+      return res.status(404).json({
+        ok: false,
+        data: {
+          message: `Sala con código: ${code} no encontrada`
+        }
+      });
+    }
+
+    return res.json({
+      ok: true,
+      data: room
+    });
+
+  } catch (error) {
+    console.error("Error al obtener la sala:", error);
+
+    return res.status(500).json({
+      ok: false,
+      message: "Error al obtener la sala"
+    });
+  }
+};
 
 
 /**
@@ -122,6 +163,8 @@ export const getRoomByCode = (req: Request, res: Response) => {
  * TEMPORAL: todavía utiliza activeRooms.
  * Se migrará a Prisma en RF-02/RF-03.
  */
+ 
+
 export const joinRoom = (req: Request, res: Response) => {
   const { code, accountNumber } = req.body;
 
