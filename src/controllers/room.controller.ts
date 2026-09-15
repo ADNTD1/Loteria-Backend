@@ -1,14 +1,8 @@
 import type { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { RoomStatus, type Room } from "../interfaces/room.interface.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 
 const prisma = new PrismaClient();
-
-// Temporal.
-// getRoomByCode y joinRoom todavía utilizan este arreglo.
-// Cuando implementemos RF-02/RF-03 los migraremos también a Prisma.
-const activeRooms: Room[] = [];
 
 /**
  * RF-01: Crear una sala.
@@ -91,37 +85,18 @@ export const createRoom = async (req: Request, res: Response) => {
 
 /**
  * Obtener una sala por código.
- *
- * TEMPORAL: todavía utiliza activeRooms.
- * Se migrará a Prisma junto con RF-02/RF-03.
  */
- 
- /**
-export const getRoomByCode = (req: Request, res: Response) => {
-  const { code } = req.params;
-
-  const room = activeRooms.find(r => r.code === code);
-
-  if (!room) {
-    return res.status(404).json({
-      ok: false,
-      data: {
-        message: `Sala con código: ${code} no encontrada`
-      }
-    });
-  }
-
-  return res.json({
-    ok: true,
-    data: room
-  });
-};
- */
-
 
 export const getRoomByCode = async (req: Request, res: Response) => {
   try {
     const code = req.params.code as string;
+
+    if (typeof code !== "string") {
+      return res.status(400).json({
+        ok: false,
+        message: "Código de sala inválido"
+      });
+    }
 
     const room = await prisma.room.findUnique({
       where: {
@@ -158,54 +133,89 @@ export const getRoomByCode = async (req: Request, res: Response) => {
 
 
 /**
- * Unirse a una sala.
- *
- * TEMPORAL: todavía utiliza activeRooms.
- * Se migrará a Prisma en RF-02/RF-03.
+ * RF-02: Unirse a una sala mediante su código.
  */
- 
+export const joinRoom = async (req: Request, res: Response) => {
+  try {
+    const { code, accountNumber } = req.body;
 
-export const joinRoom = (req: Request, res: Response) => {
-  const { code, accountNumber } = req.body;
+    if (!code || !accountNumber) {
+      return res.status(400).json({
+        ok: false,
+        message: "El código de sala y número de cuenta son requeridos"
+      });
+    }
 
-  if (!accountNumber || !code) {
-    return res.status(400).json({
-      ok: false,
-      data: {
-        message: "Debes haberte identificado antes de ingresar a una sala",
-        code,
-        cuenta: accountNumber
+    const user = await prisma.user.findUnique({
+      where: {
+        accountNumber
+      }
+    });  
+
+    if (!user) {
+      return res.status(404).json({
+        ok: false,
+        message: "El usuario no existe"
+      });
+    }
+
+    const room = await prisma.room.findUnique({
+      where: {
+        code
       }
     });
-  }
 
-  const room = activeRooms.find(r => r.code === code);
+    if (!room) {
+      return res.status(404).json({
+        ok: false,
+        data: {
+          message: "La sala especificada no fue encontrada"
+        }
+      });
+    }
 
-  if (!room) {
-    return res.status(404).json({
-      ok: false,
-      data: {
-        message: "La sala especificada no fue encontrada"
+    if (room.status !== "WAITING") { 
+      return res.status(400).json({
+        ok: false,
+        data: {
+          message: "La partida de la sala ya comenzó"
+        }
+      });
+    }
+
+    const existingPlayer = await prisma.roomPlayer.findFirst({
+      where: {
+        roomId: room.id,
+        userId: user.id
       }
     });
-  }
 
-  if (room.status !== RoomStatus.WAITING) {
-    return res.status(400).json({
-      ok: false,
+    if (existingPlayer) {
+      return res.status(200).json({
+        ok: true,
+        message: "El jugador ya pertenece a esta sala",
+        data: room
+      });
+    }
+
+    await prisma.roomPlayer.create({
       data: {
-        message: "La partida de la sala ya comenzó"
+        roomId: room.id,
+        userId: user.id
       }
     });
-  }
 
-  if (!room.players.includes(accountNumber)) {
-    room.players.push(accountNumber);
-  }
+    return res.json({
+      ok: true,
+      message: "Te has unido exitosamente",
+      data: room
+    });
+  } catch (error) {
+    console.error("Error al unirse a la sala:", error);
 
-  return res.json({
-    ok: true,
-    message: "Te has unido exitosamente",
-    data: room
-  });
+    return res.status(500).json({
+      ok: false,
+      message: "Error al unirse a la sala"
+    });
+  }
 };
