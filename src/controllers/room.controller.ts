@@ -121,7 +121,7 @@ export const getRoomByCode = (req: Request, res: Response) => {
 
 export const getRoomByCode = async (req: Request, res: Response) => {
   try {
-    const { code } = req.params;
+    const code = req.params.code as string;
 
     const room = await prisma.room.findUnique({
       where: {

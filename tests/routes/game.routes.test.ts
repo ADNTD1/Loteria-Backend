@@ -12,6 +12,11 @@ vi.mock("../../src/repositories/card.repository.js", () => ({
   }
 }));
 
+// Mocka el middleware de autenticación para que no bloquee las pruebas
+vi.mock("../../src/middlewares/auth.middleware.js", () => ({
+  authenticateToken: (req: any, res: any, next: any) => next(),
+}));
+
 beforeEach(() => {
   findAll.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});

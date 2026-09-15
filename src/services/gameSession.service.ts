@@ -5,6 +5,10 @@ import {
   type WinPattern,
 } from "../interfaces/gameSession.interface.js";
 import { GameSessionsStore } from "../state/gameSessions.store.js";
+import { EventEmitter } from "events";
+
+// Emisor de eventos para broadcast de cambios en sesiones
+export const gameSessionEvents = new EventEmitter();
 
 // Cada cuanto tiempo el "cantor" automático canta una carta nueva (ms)
 const CALL_INTERVAL_MS = 4000;
@@ -56,6 +60,8 @@ export const startGame = (
   GameSessionsStore.set(session);
   scheduleNextCall(roomCode);
 
+  gameSessionEvents.emit("game:started", { roomCode, status: session.status });
+
   return session;
 };
 /**
@@ -76,6 +82,8 @@ const scheduleNextCall = (roomCode: string): void => {
     const card = session.deck[session.cursor];
     session.calledCards.push(card as Card);
     session.cursor += 1;
+
+    gameSessionEvents.emit("card:called", { roomCode, card, calledCount: session.calledCards.length });
 
     scheduleNextCall(roomCode);
   }, CALL_INTERVAL_MS);
@@ -160,6 +168,8 @@ const finishGame = (
   session.status = GameSessionStatus.FINISHED;
   session.winner = winner;
   session.intervalId = null;
+
+  gameSessionEvents.emit("game:finished", { roomCode, winner, pattern });
 };
 
 /** Detiene una partida manualmente (ej. el host cancela la sala). */
