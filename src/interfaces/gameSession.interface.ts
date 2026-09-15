@@ -6,7 +6,7 @@ export enum GameSessionStatus {
   FINISHED = "FINISHED",
 }
 
-export type WinPattern = "LINE" | "FULL_BOARD";
+export type WinPattern = "LINE" | "FULL_BOARD" | "CORNERS";
 
 export interface GameSession {
   roomCode: string;

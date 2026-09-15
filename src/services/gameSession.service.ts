@@ -93,18 +93,24 @@ export const checkVictory = (
   calledCards: Card[]
 ): { won: boolean; pattern: WinPattern | null } => {
   const calledIds = new Set(calledCards.map((c) => c.id));
-  const marks = board.cards.map((c) => calledIds.has(c.id)); // 16 posiciones, orden fila por fila
+  const marks = board.cards.map((c) => calledIds.has(c.id));
 
   const isLineComplete = (indexes: number[]) => indexes.every((i) => marks[i]);
 
   const lines: number[][] = [
-    [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], // filas
-    [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15], // columnas
-    [0, 5, 10, 15], [3, 6, 9, 12],                                 // diagonales
+    [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
+    [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
+    [0, 5, 10, 15], [3, 6, 9, 12],
   ];
+
+  const corners: number[] = [0, 3, 12, 15]; // esquinas del 4x4
 
   if (marks.every(Boolean)) {
     return { won: true, pattern: "FULL_BOARD" };
+  }
+
+  if (isLineComplete(corners)) {
+    return { won: true, pattern: "CORNERS" };
   }
 
   if (lines.some(isLineComplete)) {
