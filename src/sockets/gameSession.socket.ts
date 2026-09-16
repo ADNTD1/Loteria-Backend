@@ -2,6 +2,7 @@ import { Server as HTTPServer } from "http";
 import { Server } from "socket.io";
 import { verifyToken } from "../utils/jwt.utils.js";
 import { gameSessionEvents } from "../services/gameSession.service.js";
+import { roomCodeSchema } from "../validations/common.validation.js";
 
 export const initGameSessionSocket = (httpServer: HTTPServer) => {
   const io = new Server(httpServer, {
@@ -31,9 +32,14 @@ export const initGameSessionSocket = (httpServer: HTTPServer) => {
   io.on("connection", (socket) => {
     // Escucha evento del cliente para unirse a una sala
     socket.on("room:join", (data: { roomCode: string }) => {
-      const { roomCode } = data;
-      socket.join(roomCode);
-      socket.data.roomCode = roomCode;
+      const parsed = roomCodeSchema.safeParse(data?.roomCode);
+
+      if (!parsed.success) {
+        return;
+      }
+
+      socket.join(parsed.data);
+      socket.data.roomCode = parsed.data;
     });
 
     socket.on("disconnect", () => {
