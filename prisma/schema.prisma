@@ -40,6 +40,7 @@ model Room {
   hostAccountNumber String
   code              String     @unique
   status            RoomStatus @default(WAITING)
+  maxPlayers        Int
   createdAt         DateTime   @default(now())
 
   host User @relation("RoomHost", fields: [hostAccountNumber], references: [accountNumber])

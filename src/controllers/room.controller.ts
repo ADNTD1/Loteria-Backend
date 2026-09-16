@@ -9,13 +9,20 @@ const prisma = new PrismaClient();
  */
 export const createRoom = async (req: Request, res: Response) => {
   try {
-    const { hostAccountNumber } = req.body;
+    const { hostAccountNumber, maxPlayers } = req.body;
 
     // El usuario debe haberse identificado previamente.
     if (!hostAccountNumber) {
       return res.status(400).json({
         ok: false,
-        message: "Favor de autenticarse antes de crear una sala"
+        message: "El número de cuenta es requerido"
+      });
+    }
+
+    if (!Number.isInteger(maxPlayers) || maxPlayers < 2) {
+      return res.status(400).json({
+        ok: false,
+        message: "La sala debe permitir al menos 2 jugadores"
       });
     }
 
@@ -51,7 +58,8 @@ export const createRoom = async (req: Request, res: Response) => {
         data: {
           hostAccountNumber,
           code,
-          status: "WAITING"
+          status: "WAITING",
+          maxPlayers
         }
       });
 
