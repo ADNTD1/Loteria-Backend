@@ -18,7 +18,7 @@ app.use('/api/users', userRouter);
 app.use('/api/rooms', roomRouter);
 app.use('/api/game', gameRouter);
 app.use('/api/game-session', gameSessionRouter);
-
+app.use('/cards', express.static('public/cards'));
 // Siempre al final, después de todas las rutas.
 app.use(notFoundHandler);
 app.use(errorHandler);

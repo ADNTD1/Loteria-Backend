@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BoardOperations } from '../src/utils/board.operations.js';
 import type { Card, playerBoard } from '../src/interfaces/game.interface.js';
 

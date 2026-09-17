@@ -6,23 +6,37 @@ export class BoardOperations {
    * Genera una tabla aleatoria de 16 cartas sin repetición.
    * Utiliza el algoritmo de Fisher-Yates para asegurar O(N) y cero duplicados.
    */
+    /** Tamaño oficial de una tabla de Lotería (4x4). */
+  public static readonly BOARD_SIZE = 16;
   public static generateRandomBoard(accountNumber: string, allCards: Card[]): playerBoard {
-    if (allCards.length < 16) {
+    if (allCards.length < BoardOperations.BOARD_SIZE) {
       throw new Error("No hay suficientes cartas para generar el tablero (mínimo 16)");
     }
 
-    const shuffled = [...allCards];
+   const shuffled = [...allCards];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      const temp = shuffled[i] as Card;      // <- antes: [shuffled[i], shuffled[j]] = ...
+      shuffled[i] = shuffled[j] as Card;     //    eso daba error TS2322
+      shuffled[j] = temp;
     }
 
     return {
       accountNumber,
-      cards: shuffled.slice(0, 16)
+      cards: shuffled.slice(0, BoardOperations.BOARD_SIZE)
     };
   }
+  /**
+   * RF-04 / RF-05: una tabla es válida si tiene exactamente 16 cartas
+   * y ninguna se repite dentro de ella.
+   */
+  public static isValidBoard(board: playerBoard | undefined | null): boolean {
+    if (!board || !Array.isArray(board.cards)) return false;
+    if (board.cards.length !== BoardOperations.BOARD_SIZE) return false;
 
+    const uniqueIds = new Set(board.cards.map((c) => c.id));
+    return uniqueIds.size === BoardOperations.BOARD_SIZE;
+  }
   /**
    * Verifica qué cartas de la tabla están marcadas (salieron).
    * @returns Un array de booleanos de longitud 16, donde true indica que fue cantada.
