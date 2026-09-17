@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { CardRepository } from "../repositories/card.repository.js";
 import { generateRandomBoard } from "../utils/generateRandomBoard.js";
 import type { playerBoard } from "../interfaces/game.interface.js";
+import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 import {
   startGame,
   claimVictory,
@@ -69,15 +70,21 @@ export const getGameSessionState = (req: Request, res: Response) => {
 };
 
 // POST /api/game-session/:code/claim
-// body: { accountNumber: string }  -> el jugador grita "¡Lotería!"
-export const claimGameVictory = (req: Request, res: Response) => {
+//Blindado contra RF-23
+// POST /api/game-session/:code/claim -> El jugador canta "¡Lotería!" (identidad vía JWT)
+export const claimGameVictory = (req: AuthenticatedRequest, res: Response) => {
   try {
     const code = req.params.code as string;
-    const { accountNumber } = req.body as { accountNumber: string };
 
-    if (!code) return res.status(400).json({ ok: false, message: "Falta el código de sala" });
+    // Seguridad RF-23: Se toma del token JWT verificado, nunca de req.body
+    const accountNumber = req.user?.accountNumber;
+
+    if (!code) {
+      return res.status(400).json({ ok: false, message: "Falta el código de sala" });
+    }
+
     if (!accountNumber) {
-      return res.status(400).json({ ok: false, message: "Falta el accountNumber del jugador" });
+      return res.status(401).json({ ok: false, message: "Usuario no autenticado" });
     }
 
     const result = claimVictory(code, accountNumber);
@@ -103,7 +110,7 @@ export const claimGameVictory = (req: Request, res: Response) => {
 };
 
 // POST /api/game-session/:code/stop
-export const stopGameSession = (req: Request, res: Response) => {
+export const stopGameSession = (req: AuthenticatedRequest, res: Response) => {
   try {
     const code = req.params.code as string;
     if (!code) return res.status(400).json({ ok: false, message: "Falta el código de sala" });

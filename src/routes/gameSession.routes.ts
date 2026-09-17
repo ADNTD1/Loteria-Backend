@@ -16,9 +16,12 @@ router.post("/:code/start", // falta verificar que solo el host pueda hacer esta
 router.get("/:code/state", 
 	rateLimit({ windowMs: 60_000,limit: 30,}), 
 	getGameSessionState);
-router.post("/:code/claim", 
-	rateLimit({ windowMs: 60_000,limit: 50,}), 
-	claimGameVictory);
+router.post(
+  "/:code/claim",
+  rateLimit({ windowMs: 60_000, limit: 10 }), // 10 intentos por minuto es suficiente para cantar victoria
+  authenticateToken,                          // Exige que el jugador envíe su JWT
+  claimGameVictory
+);
 router.post("/:code/stop", 
 	rateLimit({ windowMs: 60_000,limit: 20,}), 
 	stopGameSession);
