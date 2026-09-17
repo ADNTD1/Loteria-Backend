@@ -147,6 +147,7 @@ export const joinRoom = async (req: Request, res: Response) => {
   try {
     const { code, accountNumber } = req.body;
 
+    // 1. Validar parámetros requeridos
     if (!code || !accountNumber) {
       return res.status(400).json({
         ok: false,
@@ -154,10 +155,9 @@ export const joinRoom = async (req: Request, res: Response) => {
       });
     }
 
+    // 2. Comprobar que el usuario existe
     const user = await prisma.user.findUnique({
-      where: {
-        accountNumber
-      }
+      where: { accountNumber }
     });  
 
     if (!user) {
@@ -167,30 +167,32 @@ export const joinRoom = async (req: Request, res: Response) => {
       });
     }
 
+    // 3. Comprobar que la sala existe (incluyendo el conteo de jugadores)
     const room = await prisma.room.findUnique({
-      where: {
-        code
+      where: { code },
+      include: {
+        _count: {
+          select: { players: true }
+        }
       }
     });
 
     if (!room) {
       return res.status(404).json({
         ok: false,
-        data: {
-          message: "La sala especificada no fue encontrada"
-        }
+        data: { message: "La sala especificada no fue encontrada" }
       });
     }
 
+    // 4. Comprobar que la sala este en estado WAITING
     if (room.status !== "WAITING") { 
       return res.status(400).json({
         ok: false,
-        data: {
-          message: "La partida de la sala ya comenzó"
-        }
+        data: { message: "La partida de la sala ya comenzó" }
       });
     }
 
+    // 5. Comprobar si el usuario ya pertenece a la sala PRIMERO
     const existingPlayer = await prisma.roomPlayer.findFirst({
       where: {
         roomId: room.id,
@@ -206,6 +208,15 @@ export const joinRoom = async (req: Request, res: Response) => {
       });
     }
 
+    // 6. Si NO pertenece, comprobar si se alcanzó la capacidad máxima
+    if (room._count.players >= room.maxPlayers) {
+      return res.status(400).json({
+        ok: false,
+        data: { message: "La sala está llena" }
+      });
+    }
+
+    // 7. Si hay espacio, crear la relación
     await prisma.roomPlayer.create({
       data: {
         roomId: room.id,
@@ -220,7 +231,6 @@ export const joinRoom = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error al unirse a la sala:", error);
-
     return res.status(500).json({
       ok: false,
       message: "Error al unirse a la sala"
