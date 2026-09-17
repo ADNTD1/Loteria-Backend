@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { swaggerSpec } from './config/swagger.config.js';
 import swaggerUi from 'swagger-ui-express'
 
@@ -11,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js
 // La app se exporta sin app.listen() para poder probarla con supertest.
 const app = express();
 
+app.use(cors())
 app.use(express.json());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
