@@ -7,6 +7,40 @@ const prisma = new PrismaClient();
 // Estructura en memoria para rastrear qué cuentas tienen sesión activa
 const activeSessions = new Set<string>();
 
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Iniciar sesión con número de cuenta
+ *     description: Permite a un usuario iniciar sesión utilizando su número de cuenta registrado.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountNumber
+ *             properties:
+ *               accountNumber:
+ *                 type: string
+ *                 example: "20230001"
+ *                 description: Número de cuenta del usuario
+ *     responses:
+ *       200:
+ *         description: Acceso correcto
+ *       400:
+ *         description: El número de cuenta es obligatorio
+ *       403:
+ *         description: Ya existe una sesión activa con este número de cuenta
+ *       404:
+ *         description: Número de cuenta no registrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+
 export const loginWithAccountNumber = async (req: Request, res: Response) => {
   try {
     const { accountNumber } = req.body;
@@ -64,6 +98,13 @@ export const loginWithAccountNumber = async (req: Request, res: Response) => {
 };
 
 // Endpoint para liberar la sesión cuando el usuario sale
+// Ejemplo de uso:
+// 1) Haders: Content-Type y Application-Json Raw
+// 2) Json:
+//   {
+//      accountNumber: "20000555"
+//   }
+// 3: Mehod: POST
 export const logoutUser = (req: Request, res: Response) => {
   const { accountNumber } = req.body;
 

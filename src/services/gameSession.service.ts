@@ -6,6 +6,10 @@ import {
 } from "../interfaces/gameSession.interface.js";
 import { GameSessionsStore } from "../state/gameSessions.store.js";
 import { AliasesStore } from "../state/aliases.store.js";
+import { EventEmitter } from "events";
+
+// Emisor de eventos para broadcast de cambios en sesiones
+export const gameSessionEvents = new EventEmitter();
 
 // Cada cuanto tiempo el "cantor" automático canta una carta nueva (ms)
 const CALL_INTERVAL_MS = 4000;
@@ -57,6 +61,8 @@ export const startGame = (
   GameSessionsStore.set(session);
   scheduleNextCall(roomCode);
 
+  gameSessionEvents.emit("game:started", { roomCode, status: session.status });
+
   return session;
 };
 /**
@@ -78,6 +84,8 @@ const scheduleNextCall = (roomCode: string): void => {
     session.calledCards.push(card as Card);
     session.cursor += 1;
 
+    gameSessionEvents.emit("card:called", { roomCode, card, calledCount: session.calledCards.length });
+
     scheduleNextCall(roomCode);
   }, CALL_INTERVAL_MS);
 
@@ -89,36 +97,13 @@ const scheduleNextCall = (roomCode: string): void => {
  * las cartas ya cantadas. Esta es la validación "oficial" del servidor,
  * el cliente nunca decide quién gana.
  */
+import { BoardOperations } from "../utils/board.operations.js";
+
 export const checkVictory = (
   board: playerBoard,
   calledCards: Card[]
 ): { won: boolean; pattern: WinPattern | null } => {
-  const calledIds = new Set(calledCards.map((c) => c.id));
-  const marks = board.cards.map((c) => calledIds.has(c.id));
-
-  const isLineComplete = (indexes: number[]) => indexes.every((i) => marks[i]);
-
-  const lines: number[][] = [
-    [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
-    [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
-    [0, 5, 10, 15], [3, 6, 9, 12],
-  ];
-
-  const corners: number[] = [0, 3, 12, 15]; // esquinas del 4x4
-
-  if (marks.every(Boolean)) {
-    return { won: true, pattern: "FULL_BOARD" };
-  }
-
-  if (isLineComplete(corners)) {
-    return { won: true, pattern: "CORNERS" };
-  }
-
-  if (lines.some(isLineComplete)) {
-    return { won: true, pattern: "LINE" };
-  }
-
-  return { won: false, pattern: null };
+  return BoardOperations.checkVictory(board, calledCards);
 };
 
 /**
@@ -162,6 +147,8 @@ const finishGame = (
   session.winner = winner;
   session.winPattern = pattern;
   session.intervalId = null;
+
+  gameSessionEvents.emit("game:finished", { roomCode, winner, pattern });
 };
 
 /** Detiene una partida manualmente (ej. el host cancela la sala). */
