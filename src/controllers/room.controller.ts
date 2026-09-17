@@ -152,7 +152,32 @@ export const getRoomByCode = async (req: Request, res: Response) => {
 
 
 /**
- * RF-02: Unirse a una sala mediante su código.
+ * Permite que un usuario se una a una sala mediante el código de la sala
+ * y su número de cuenta.
+ *
+ * @param req - Solicitud HTTP que contiene:
+ *   - code: Código de la sala.
+ *   - accountNumber: Número de cuenta del usuario.
+ *
+ * @param res - Respuesta HTTP que devuelve el resultado de la operación.
+ *
+ * @returns
+ *   - 400: Si faltan el código o número de cuenta.
+ *   - 404: Si el usuario o la sala no existen.
+ *   - 400: Si la partida ya comenzó.
+ *   - 200: Si el usuario ya pertenece a la sala.
+ *   - 400: Si la sala alcanzó su capacidad máxima.
+ *   - 200: Si el usuario se une correctamente.
+ *   - 500: Si ocurre un error durante el proceso.
+ *
+ * El proceso realiza las siguientes validaciones:
+ * 1. Verifica que se hayan enviado los datos requeridos.
+ * 2. Comprueba que el usuario exista.
+ * 3. Comprueba que la sala exista y obtiene el número de jugadores.
+ * 4. Verifica que la sala se encuentre en estado WAITING.
+ * 5. Comprueba si el usuario ya pertenece a la sala.
+ * 6. Verifica que la sala tenga espacio disponible.
+ * 7. Crea la relación entre el usuario y la sala.
  */
 export const joinRoom = async (req: Request, res: Response) => {
   try {
