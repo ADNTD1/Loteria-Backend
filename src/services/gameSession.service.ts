@@ -5,6 +5,7 @@ import {
   type WinPattern,
 } from "../interfaces/gameSession.interface.js";
 import { GameSessionsStore } from "../state/gameSessions.store.js";
+import { AliasesStore } from "../state/aliases.store.js";
 import { EventEmitter } from "events";
 
 // Emisor de eventos para broadcast de cambios en sesiones
@@ -144,6 +145,7 @@ const finishGame = (
 
   session.status = GameSessionStatus.FINISHED;
   session.winner = winner;
+  session.winPattern = pattern;
   session.intervalId = null;
 
   gameSessionEvents.emit("game:finished", { roomCode, winner, pattern });
@@ -159,12 +161,19 @@ export const getPublicState = (roomCode: string) => {
   const session = GameSessionsStore.get(roomCode);
   if (!session) throw new GameSessionError(`No hay partida activa para la sala ${roomCode}`);
 
+  const aliases = AliasesStore.getAllForRoom(roomCode);
+
   return {
     roomCode: session.roomCode,
     status: session.status,
     calledCards: session.calledCards,
     lastCard: session.calledCards[session.calledCards.length - 1] ?? null,
     winner: session.winner,
+    winnerAlias: session.winner ? aliases[session.winner] ?? session.winner : null,
     winPattern: session.winPattern,
+    players: Object.keys(session.boards).map((accountNumber) => ({
+      accountNumber,
+      alias: aliases[accountNumber] ?? accountNumber,
+    })),
   };
 };

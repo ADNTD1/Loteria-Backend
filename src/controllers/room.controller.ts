@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
+import { AliasesStore, validateAlias } from "../state/aliases.store.js";
 
 const prisma = new PrismaClient();
 
@@ -181,7 +182,7 @@ export const getRoomByCode = async (req: Request, res: Response) => {
  */
 export const joinRoom = async (req: Request, res: Response) => {
   try {
-    const { code, accountNumber } = req.body;
+    const { code, accountNumber, alias } = req.body;
 
     // 1. Validar parámetros requeridos
     if (!code || !accountNumber) {
@@ -194,7 +195,7 @@ export const joinRoom = async (req: Request, res: Response) => {
     // 2. Comprobar que el usuario existe
     const user = await prisma.user.findUnique({
       where: { accountNumber }
-    });  
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -221,7 +222,7 @@ export const joinRoom = async (req: Request, res: Response) => {
     }
 
     // 4. Comprobar que la sala este en estado WAITING
-    if (room.status !== "WAITING") { 
+    if (room.status !== "WAITING") {
       return res.status(400).json({
         ok: false,
         data: { message: "La partida de la sala ya comenzó" }
@@ -252,7 +253,24 @@ export const joinRoom = async (req: Request, res: Response) => {
       });
     }
 
-    // 7. Si hay espacio, crear la relación
+    // 7. Validar el alias ANTES de escribir en la base de datos.
+    const aliasCheck = validateAlias(alias);
+
+    if (!aliasCheck.ok) {
+      return res.status(400).json({
+        ok: false,
+        data: { message: aliasCheck.error }
+      });
+    }
+
+    if (AliasesStore.isTaken(code, accountNumber, aliasCheck.value)) {
+      return res.status(409).json({
+        ok: false,
+        data: { message: `El alias "${aliasCheck.value}" ya está en uso en esta sala` }
+      });
+    }
+
+    // 8. Si hay espacio y el alias es válido, crear la relación.
     await prisma.roomPlayer.create({
       data: {
         roomId: room.id,
@@ -260,10 +278,16 @@ export const joinRoom = async (req: Request, res: Response) => {
       }
     });
 
+    AliasesStore.set(code, accountNumber, aliasCheck.value);
+
     return res.json({
       ok: true,
       message: "Te has unido exitosamente",
-      data: room
+      data: {
+        ...room,
+        alias: aliasCheck.value,
+        aliases: AliasesStore.getAllForRoom(code)
+      }
     });
   } catch (error) {
     console.error("Error al unirse a la sala:", error);
