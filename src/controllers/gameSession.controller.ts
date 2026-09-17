@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { CardRepository } from "../repositories/card.repository.js";
 import { generateRandomBoard } from "../utils/generateRandomBoard.js";
 import type { playerBoard } from "../interfaces/game.interface.js";
+import { AliasesStore } from "../state/aliases.store.js";
 import {
   startGame,
   claimVictory,
@@ -89,11 +90,14 @@ export const claimGameVictory = (req: Request, res: Response) => {
       });
     }
 
+    const winnerAlias = AliasesStore.get(code, accountNumber) ?? accountNumber;
+
     return res.json({
       ok: true,
-      message: "¡Lotería válida!",
-      data: { winner: accountNumber, pattern: result.pattern },
+      message: `¡Lotería válida! Ganó ${winnerAlias}`,
+      data: { winner: accountNumber, winnerAlias, pattern: result.pattern },
     });
+    
   } catch (error: any) {
     if (error instanceof GameSessionError) {
       return res.status(400).json({ ok: false, message: error.message });

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { RoomStatus, type Room } from "../interfaces/room.interface.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
+import { AliasesStore, validateAlias } from "../state/aliases.store.js";
 
 const prisma = new PrismaClient();
 
@@ -123,7 +124,7 @@ export const getRoomByCode = (req: Request, res: Response) => {
  * Se migrará a Prisma en RF-02/RF-03.
  */
 export const joinRoom = (req: Request, res: Response) => {
-  const { code, accountNumber } = req.body;
+  const { code, accountNumber, alias } = req.body;
 
   if (!accountNumber || !code) {
     return res.status(400).json({
@@ -156,6 +157,25 @@ export const joinRoom = (req: Request, res: Response) => {
     });
   }
 
+  // Validar y registrar el alias del jugador para esta sala.
+  const aliasCheck = validateAlias(alias);
+
+  if (!aliasCheck.ok) {
+    return res.status(400).json({
+      ok: false,
+      data: { message: aliasCheck.error }
+    });
+  }
+
+  if (AliasesStore.isTaken(code, accountNumber, aliasCheck.value)) {
+    return res.status(409).json({
+      ok: false,
+      data: { message: `El alias "${aliasCheck.value}" ya está en uso en esta sala` }
+    });
+  }
+
+  AliasesStore.set(code, accountNumber, aliasCheck.value);
+
   if (!room.players.includes(accountNumber)) {
     room.players.push(accountNumber);
   }
@@ -163,6 +183,10 @@ export const joinRoom = (req: Request, res: Response) => {
   return res.json({
     ok: true,
     message: "Te has unido exitosamente",
-    data: room
+    data: {
+      ...room,
+      alias: aliasCheck.value,
+      aliases: AliasesStore.getAllForRoom(code)
+    }
   });
 };
