@@ -21,6 +21,14 @@ export const getAllCards = async (req: Request, res: Response) => {
   });
 };
 
+// Ejemplo de uso:
+// 1) Haders: En Authorization pones Key y Value [Key]
+// Nota: la key se es el token de sescion de /api/users/login:{accountNumber}
+// 2) Json:
+//    {
+//      accountNumber: "12345666"
+//    }
+//
 export const getRandomBoard = async (req: Request, res: Response) => {
   // En Express 5 req.body es undefined si no mandan un JSON.
   const { accountNumber } = req.body ?? {};
@@ -37,6 +45,11 @@ export const getRandomBoard = async (req: Request, res: Response) => {
     data: board
   });
 };
+
+// El mazo de cartas incial sera llamado por el host al inciar la partida (al darle click al boton)
+// Aqui solo se manda el token con los mismos headers que en getRandomBoard()
+// Headers: Authorization: Key y Value: {Token}
+// el token se ontiene al iniciar sesion
 
 export const getShuffledDeck = async (req: Request, res: Response) => {
   const cards = await cardRepository.findAll();

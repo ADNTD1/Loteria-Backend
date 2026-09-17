@@ -98,6 +98,13 @@ export const loginWithAccountNumber = async (req: Request, res: Response) => {
 };
 
 // Endpoint para liberar la sesión cuando el usuario sale
+// Ejemplo de uso:
+// 1) Haders: Content-Type y Application-Json Raw
+// 2) Json:
+//   {
+//      accountNumber: "20000555"
+//   }
+// 3: Mehod: POST
 export const logoutUser = (req: Request, res: Response) => {
   const { accountNumber } = req.body;
 
