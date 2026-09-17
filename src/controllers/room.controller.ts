@@ -91,9 +91,20 @@ export const createRoom = async (req: Request, res: Response) => {
 };
 
 
-/**
- * Obtener una sala por código.
- */
+// Ejemplo de uso:
+// Se manda un GET con el código de la sala en la URL.
+// El código debe ser de tipo string.
+//
+// Ejemplo:
+// GET /rooms/ABC-123
+//
+// No es necesario enviar un JSON en el body.
+//
+// Si la sala existe, se regresa:
+// - La información de la sala.
+// - La lista de jugadores que pertenecen a ella.
+//
+// Si el código no corresponde a ninguna sala, se regresa un error 404.
 
 export const getRoomByCode = async (req: Request, res: Response) => {
   try {
