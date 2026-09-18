@@ -193,9 +193,18 @@ export const joinRoom = async (
     throw new RoomError(`El alias "${aliasCheck.value}" ya está en uso en esta sala`);
   }
 
-  await prisma.roomPlayer.create({
-    data: { roomId: room.id, userId: user.id },
-  });
+  try {
+    await prisma.roomPlayer.create({
+      data: { roomId: room.id, userId: user.id },
+    });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Ignorar si se unio concurrentemente (React Strict Mode o doble clic)
+      const board = await assignBoardToPlayer(code, accountNumber);
+      return { room, board, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
+    }
+    throw error;
+  }
 
   AliasesStore.set(code, accountNumber, aliasCheck.value);
   emptySince.delete(code);
