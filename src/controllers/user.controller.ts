@@ -64,7 +64,7 @@ export const loginWithAccountNumber = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Renovar sesión activa (sin bloquear con 403)
+    // 2. Renovar sesión activa
     activeSessions.add(cleanAccountNumber);
 
     // 3. Generar token y responder
@@ -92,11 +92,13 @@ export const loginWithAccountNumber = async (req: Request, res: Response) => {
  * /api/users/logout:
  *   post:
  *     summary: Cerrar sesión
- *     description: Libera la sesión activa del usuario.
+ *     description: Libera la sesión activa del usuario actual.
  *     tags:
  *       - Autenticación
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
@@ -109,8 +111,9 @@ export const loginWithAccountNumber = async (req: Request, res: Response) => {
  *       200:
  *         description: Sesión cerrada correctamente
  */
-export const logoutUser = (req: Request, res: Response) => {
-  const { accountNumber } = req.body;
+export const logoutUser = (req: AuthenticatedRequest, res: Response) => {
+  // Extrae la cuenta del token si viene autenticado, o del body como respaldo
+  const accountNumber = req.user?.accountNumber || req.body?.accountNumber;
 
   if (accountNumber) {
     activeSessions.delete(String(accountNumber).trim());
