@@ -25,7 +25,7 @@ async function main() {
   const cards = CARD_NAMES.map((name, index) => ({
     id: index + 1,
     name,
-    imgUrl: `/cards/${String(index + 1).padStart(2, "0")}.jpg`,
+    imgUrl: `${index + 1}.webp`,
   }));
 
   for (const card of cards) {

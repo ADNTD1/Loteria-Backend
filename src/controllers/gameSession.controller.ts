@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { CardRepository } from "../repositories/card.repository.js";
-import { generateRandomBoard } from "../utils/generateRandomBoard.js";
+import { assignBoardToPlayer, getBoardsForRoom } from "../services/board.service.js";
+import { BoardOperations } from "../utils/board.operations.js";
 import type { playerBoard } from "../interfaces/game.interface.js";
 import {
   startGame,
@@ -29,9 +30,20 @@ export const startGameSession = async (req: Request, res: Response) => {
 
     const allCards = await cardRepository.findAll();
 
+    const assigned = getBoardsForRoom(code);
     const boards: Record<string, playerBoard> = {};
+
     for (const accountNumber of players) {
-      boards[accountNumber] = generateRandomBoard(accountNumber, allCards);
+      const board = assigned[accountNumber] ?? (await assignBoardToPlayer(code, accountNumber));
+
+      if (!BoardOperations.isValidBoard(board)) {
+        return res.status(400).json({
+          ok: false,
+          message: `La tabla del jugador ${accountNumber} no es valida`
+        });
+      }
+
+      boards[accountNumber] = board;
     }
 
     const session = startGame(code, boards, allCards);

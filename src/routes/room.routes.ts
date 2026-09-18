@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createRoom, getRoomByCode, joinRoom } from "../controllers/room.controller.js";
+import { createRoom, getRoomByCode, joinRoom, getMyBoard} from "../controllers/room.controller.js";
 import rateLimit from "express-rate-limit";
 import { authenticateToken } from "../middlewares/auth.middleware.js"
 
@@ -14,6 +14,10 @@ router.post('/join',
 	rateLimit({ windowMs: 60_000,limit: 40,}),
 	//authenticateToken, 
 	joinRoom)
+
+router.get('/:code/board/:accountNumber',
+	rateLimit({ windowMs: 60_000, limit: 60 }),
+	getMyBoard)
 
 router.get('/:code', 
 	rateLimit({ windowMs: 60_000,limit: 40,}),
