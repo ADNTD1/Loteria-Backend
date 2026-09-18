@@ -18,6 +18,9 @@ export interface GameSession {
   winner: string | null;
   winPattern: WinPattern | null;
   targetWinModes: string[];
+  scores: Record<string, number>;                        // accountNumber -> puntos acumulados
+  claimedPatterns: Partial<Record<WinPattern, string>>;  // patrón -> quién se lo llevó (se agota)
+  lastScoreAt: Record<string, number>;                   // para desempatar: quién llegó antes
   intervalId: ReturnType<typeof setTimeout> | null; // referencia del cantor automático, para poder detenerlo
   createdAt: Date;
 }

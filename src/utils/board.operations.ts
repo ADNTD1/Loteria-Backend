@@ -47,15 +47,15 @@ export class BoardOperations {
   }
 
   /**
-   * Valida si un tablero cumple ALGUNA de las condiciones de victoria
-   * habilitadas para la sala. Si cumple varias, se reporta la más "alta"
-   * según el orden de prioridad (el cartón lleno es lo más fuerte).
+   * Devuelve TODOS los patrones habilitados que el tablero ya completó,
+   * ordenados de mayor a menor prioridad (el cartón lleno es lo más fuerte).
+   * Se usa para repartir puntos: un jugador puede cantar varios a la vez.
    */
-  public static checkVictory(
+  public static completedPatterns(
     board: playerBoard,
     calledCards: Card[],
     targetWinModes: string[]
-  ): { won: boolean; pattern: WinPattern | null } {
+  ): WinPattern[] {
     const marks = this.getMarks(board, calledCards);
 
     const isLineComplete = (indexes: number[]) => indexes.every((i) => marks[i]);
@@ -85,12 +85,20 @@ export class BoardOperations {
     const enabled = new Set(targetWinModes);
     const priority: WinPattern[] = ["FULL_BOARD", "CENTER_2X2", "SQUARE_2X2", "CORNERS", "LINE"];
 
-    for (const pattern of priority) {
-      if (enabled.has(pattern) && checks[pattern]!()) {
-        return { won: true, pattern };
-      }
-    }
+    return priority.filter((pattern) => enabled.has(pattern) && checks[pattern]!());
+  }
 
-    return { won: false, pattern: null };
+  /**
+   * Valida si un tablero cumple ALGUNA de las condiciones de victoria
+   * habilitadas para la sala. Si cumple varias, se reporta la más "alta".
+   */
+  public static checkVictory(
+    board: playerBoard,
+    calledCards: Card[],
+    targetWinModes: string[]
+  ): { won: boolean; pattern: WinPattern | null } {
+    const [pattern] = this.completedPatterns(board, calledCards, targetWinModes);
+
+    return { won: Boolean(pattern), pattern: pattern ?? null };
   }
 }

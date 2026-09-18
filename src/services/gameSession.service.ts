@@ -20,6 +20,22 @@ export const gameSessionEvents = new EventEmitter();
 const INITIAL_CALL_DELAY_MS = 10000;
 const CALL_INTERVAL_MS = 4000;
 
+/**
+ * Puntos por patrón: entre menos formas hay de completarlo, más vale.
+ * Línea (10 posiciones) y cuadrito (9 posiciones) son los más fáciles;
+ * esquinas y centro solo se arman de una forma; la llena es el cierre.
+ */
+export const PATTERN_POINTS: Record<WinPattern, number> = {
+  LINE: 1,
+  SQUARE_2X2: 1,
+  CORNERS: 2,
+  CENTER_2X2: 2,
+  FULL_BOARD: 5,
+};
+
+/** Por qué terminó la partida. */
+type EndReason = "FULL_BOARD" | "DECK_EXHAUSTED" | "STOPPED";
+
 const shuffle = <T>(arr: T[]): T[] => {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -52,6 +68,10 @@ export const startGame = async (
     throw new GameSessionError("No hay tableros asignados, no se puede iniciar la partida");
   }
 
+  // La llena siempre está activa: los demás patrones solo dan puntos,
+  // y es la llena la que cierra la partida.
+  const winModes = [...new Set([...targetWinModes, "FULL_BOARD"])];
+
   const session: GameSession = {
     roomCode,
     status: GameSessionStatus.PLAYING,
@@ -61,7 +81,10 @@ export const startGame = async (
     boards,
     winner: null,
     winPattern: null,
-    targetWinModes,
+    targetWinModes: winModes,
+    scores: Object.fromEntries(Object.keys(boards).map((account) => [account, 0])),
+    claimedPatterns: {},
+    lastScoreAt: {},
     intervalId: null,
     createdAt: new Date(),
   };
@@ -93,7 +116,8 @@ const scheduleNextCall = (roomCode: string, isFirstCall: boolean = false): void 
     if (!session || session.status !== GameSessionStatus.PLAYING) return;
 
     if (session.cursor >= session.deck.length) {
-      void finishGame(roomCode, null, null); // se acabó el mazo, nadie cantó lotería
+      // Se acabó el mazo sin que nadie hiciera llena: gana el de más puntos.
+      void finishGame(roomCode, "DECK_EXHAUSTED");
       return;
     }
 
@@ -122,14 +146,25 @@ export const checkVictory = (
   return BoardOperations.checkVictory(board, calledCards, targetWinModes);
 };
 
+export interface ClaimResult {
+  won: boolean;
+  patterns: WinPattern[];             // patrones que se acaba de llevar
+  points: number;                     // puntos ganados con este canto
+  scores: Record<string, number>;
+  gameOver: boolean;
+  alreadyClaimed: boolean;            // los completó, pero alguien más los cantó antes
+}
+
 /**
  * Un jugador grita "¡Lotería!". Se revalida en servidor (nunca confiar en
- * el cliente) y, si es válido, se cierra la partida y se declara ganador.
+ * el cliente). Cada patrón se lo lleva el primero que lo canta y suma puntos;
+ * un mismo jugador puede llevarse varios. La partida solo se cierra cuando
+ * alguien completa la llena.
  */
 export const claimVictory = async (
   roomCode: string,
   accountNumber: string
-): Promise<{ won: boolean; pattern: WinPattern | null }> => {
+): Promise<ClaimResult> => {
   const session = GameSessionsStore.get(roomCode);
 
   if (!session) throw new GameSessionError(`No hay partida activa para la sala ${roomCode}`);
@@ -140,31 +175,91 @@ export const claimVictory = async (
   const board = session.boards[accountNumber];
   if (!board) throw new GameSessionError("Ese jugador no tiene tablero en esta partida");
 
-  const result = checkVictory(board, session.calledCards, session.targetWinModes);
+  const completed = BoardOperations.completedPatterns(
+    board,
+    session.calledCards,
+    session.targetWinModes
+  );
+  const nuevos = completed.filter((pattern) => !session.claimedPatterns[pattern]);
 
-  if (result.won) {
-    await finishGame(roomCode, accountNumber, result.pattern);
+  if (nuevos.length === 0) {
+    return {
+      won: false,
+      patterns: [],
+      points: 0,
+      scores: { ...session.scores },
+      gameOver: false,
+      alreadyClaimed: completed.length > 0,
+    };
   }
 
-  return result;
+  let points = 0;
+  for (const pattern of nuevos) {
+    session.claimedPatterns[pattern] = accountNumber;
+    points += PATTERN_POINTS[pattern];
+  }
+
+  session.scores[accountNumber] = (session.scores[accountNumber] ?? 0) + points;
+  session.lastScoreAt[accountNumber] = Date.now();
+
+  const cerroPartida = nuevos.includes("FULL_BOARD");
+
+  if (cerroPartida) {
+    await finishGame(roomCode, "FULL_BOARD");
+  } else {
+    gameSessionEvents.emit("game:pattern-claimed", {
+      roomCode,
+      accountNumber,
+      alias: AliasesStore.getAllForRoom(roomCode)[accountNumber] ?? accountNumber,
+      patterns: nuevos,
+      points,
+      scores: { ...session.scores },
+    });
+  }
+
+  return {
+    won: true,
+    patterns: nuevos,
+    points,
+    scores: { ...session.scores },
+    gameOver: cerroPartida,
+    alreadyClaimed: false,
+  };
 };
 
-const finishGame = async (
-  roomCode: string,
-  winner: string | null,
-  pattern: WinPattern | null
-): Promise<void> => {
+/**
+ * Gana quien acumuló más puntos. Si hay empate, gana quien llegó a ese
+ * puntaje primero. Nadie suma puntos => no hay ganador.
+ */
+const resolveWinner = (session: GameSession): string | null => {
+  const conPuntos = Object.entries(session.scores).filter(([, points]) => points > 0);
+  if (conPuntos.length === 0) return null;
+
+  conPuntos.sort(([cuentaA, puntosA], [cuentaB, puntosB]) => {
+    if (puntosB !== puntosA) return puntosB - puntosA;
+    return (session.lastScoreAt[cuentaA] ?? 0) - (session.lastScoreAt[cuentaB] ?? 0);
+  });
+
+  return conPuntos[0]![0];
+};
+
+const finishGame = async (roomCode: string, reason: EndReason): Promise<void> => {
   const session = GameSessionsStore.get(roomCode);
   if (!session) return;
 
   if (session.intervalId) clearTimeout(session.intervalId);
+
+  // Si el host canceló, la partida no cuenta para nadie.
+  const winner = reason === "STOPPED" ? null : resolveWinner(session);
+  const pattern: WinPattern | null = reason === "FULL_BOARD" ? "FULL_BOARD" : null;
+  const scores = { ...session.scores };
 
   session.status = GameSessionStatus.FINISHED;
   session.winner = winner;
   session.winPattern = pattern;
   session.intervalId = null;
 
-  gameSessionEvents.emit("game:finished", { roomCode, winner, pattern });
+  gameSessionEvents.emit("game:finished", { roomCode, winner, pattern, reason, scores });
 
   // Persistir el resultado y cerrar la sala en BD.
   if (winner) {
@@ -174,7 +269,7 @@ const finishGame = async (
           roomCode,
           winnerAccount: winner,
           totalPlayers: Object.keys(session.boards).length,
-          winMode: pattern ?? "FULL",
+          winMode: reason === "FULL_BOARD" ? "FULL_BOARD" : "POINTS",
         },
       }),
       prisma.user.update({
@@ -197,7 +292,7 @@ const finishGame = async (
 
 /** Detiene una partida manualmente (ej. el host cancela la sala). */
 export const stopGame = async (roomCode: string): Promise<void> => {
-  await finishGame(roomCode, null, null);
+  await finishGame(roomCode, "STOPPED");
 };
 
 /** Estado público de la partida, sin exponer los tableros de los demás jugadores. */
@@ -216,9 +311,12 @@ export const getPublicState = (roomCode: string) => {
     winnerAlias: session.winner ? aliases[session.winner] ?? session.winner : null,
     winPattern: session.winPattern,
     targetWinModes: session.targetWinModes,
+    scores: { ...session.scores },
+    claimedPatterns: { ...session.claimedPatterns },
     players: Object.keys(session.boards).map((accountNumber) => ({
       accountNumber,
       alias: aliases[accountNumber] ?? accountNumber,
+      points: session.scores[accountNumber] ?? 0,
     })),
   };
 };

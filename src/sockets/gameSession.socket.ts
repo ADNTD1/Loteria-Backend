@@ -57,6 +57,11 @@ export const initGameSessionSocket = (httpServer: HTTPServer) => {
     io.to(data.roomCode).emit("card:called", data);
   });
 
+  // Alguien se llevó un patrón (esquinas, centro, etc.): suma puntos y la partida sigue.
+  gameSessionEvents.on("game:pattern-claimed", (data) => {
+    io.to(data.roomCode).emit("game:pattern-claimed", data);
+  });
+
   gameSessionEvents.on("game:finished", (data) => {
     io.to(data.roomCode).emit("game:finished", data);
   });
