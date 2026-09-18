@@ -44,6 +44,20 @@ vi.mock('@prisma/client', () => ({
   },
 }));
 
+// Simula el repositorio de cartas completo: assignBoardToPlayer (RF-04)
+// lo usa para armar la tabla, y no necesitamos Prisma real para probarlo.
+vi.mock('../src/repositories/card.repository.js', () => ({
+  CardRepository: class {
+    async findAll() {
+      return Array.from({ length: 16 }, (_, i) => ({
+        id: i + 1,
+        name: `Carta ${i + 1}`,
+        imgUrl: `${i + 1}.webp`,
+      }));
+    }
+  },
+}));
+
 import {
   createRoom,
   joinRoom,
@@ -54,6 +68,7 @@ import {
   roomEvents,
 } from '../src/services/room.service.js';
 import { AliasesStore } from '../src/state/aliases.store.js';
+import { RoomBoardsStore } from '../src/state/roomBoards.store.js';
 
 const host = { id: 'user-1', accountNumber: 'host-1', name: 'Host' };
 const guest = { id: 'user-2', accountNumber: 'guest-1', name: 'Guest' };
@@ -72,7 +87,11 @@ const baseRoom = {
 beforeEach(() => {
   vi.clearAllMocks();
   AliasesStore.clearRoom('ABC-123');
+  RoomBoardsStore.clear('ABC-123');
   roomEvents.removeAllListeners();
+
+
+
 
   // $transaction ejecuta el callback con el propio cliente mockeado como tx
   transaction.mockImplementation(async (cb: any) =>
