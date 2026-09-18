@@ -4,18 +4,23 @@ import app from "../../src/app.js";
 import { generateToken } from "../../src/utils/jwt.utils.js";
 
 // Mock de Prisma para no requerir conexión real a Postgres durante los tests
-const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }));
+const { findUnique, findMany } = vi.hoisted(() => ({
+  findUnique: vi.fn(),
+  findMany: vi.fn(),
+}));
 
 vi.mock("@prisma/client", () => ({
   PrismaClient: class {
     user = {
       findUnique,
+      findMany,
     };
   },
 }));
 
 beforeEach(() => {
   findUnique.mockReset();
+  findMany.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -101,5 +106,25 @@ describe("POST /api/users/logout", () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.message).toBe("Sesión cerrada correctamente");
+  });
+});
+
+describe("GET /api/users/ranking", () => {
+  it("devuelve la lista de usuarios ordenada por victorias", async () => {
+    findMany.mockResolvedValue([
+      { accountNumber: "20230001", name: "Carlos Mendoza", totalWins: 8 },
+      { accountNumber: "20230002", name: "Ana López", totalWins: 5 },
+    ]);
+
+    const res = await request(app).get("/api/users/ranking");
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBe(2);
+    expect(res.body.data[0].rank).toBe(1);
+    expect(res.body.data[0].name).toBe("Carlos Mendoza");
+    expect(res.body.data[0].totalWins).toBe(8);
+    expect(res.body.data[1].rank).toBe(2);
   });
 });

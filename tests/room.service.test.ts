@@ -7,6 +7,7 @@ const {
   roomFindMany,
   roomCreate,
   roomDelete,
+  roomUpdateMany,
   roomPlayerCreate,
   roomPlayerFindFirst,
   roomPlayerCount,
@@ -18,6 +19,7 @@ const {
   roomFindMany: vi.fn(),
   roomCreate: vi.fn(),
   roomDelete: vi.fn(),
+  roomUpdateMany: vi.fn(),
   roomPlayerCreate: vi.fn(),
   roomPlayerFindFirst: vi.fn(),
   roomPlayerCount: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock('@prisma/client', () => ({
       findMany: roomFindMany,
       create: roomCreate,
       delete: roomDelete,
+      updateMany: roomUpdateMany,
     };
     roomPlayer = {
       create: roomPlayerCreate,
@@ -212,6 +215,30 @@ describe('joinRoom', () => {
       'ya está en uso en esta sala'
     );
   });
+
+  it('rechaza una sala inactiva con status FINISHED', async () => {
+    userFindUnique.mockResolvedValue(guest);
+    roomFindUnique.mockResolvedValue({ ...baseRoom, status: 'FINISHED' });
+
+    await expect(joinRoom(guest.accountNumber, 'ABC-123', 'Beto')).rejects.toThrow(
+      'La sala está inactiva'
+    );
+  });
+
+  it('rechaza una sala sin jugadores y la marca como inactiva', async () => {
+    userFindUnique.mockResolvedValue(guest);
+    roomFindUnique.mockResolvedValue({ ...baseRoom, _count: { players: 0 } });
+
+    await expect(joinRoom(guest.accountNumber, 'ABC-123', 'Beto')).rejects.toThrow(
+      'La sala está inactiva'
+    );
+    expect(roomUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { code: 'ABC-123', status: 'WAITING' },
+        data: { status: 'FINISHED' },
+      })
+    );
+  });
 });
 
 describe('leaveRoom', () => {
@@ -229,6 +256,22 @@ describe('leaveRoom', () => {
     expect(AliasesStore.get('ABC-123', guest.accountNumber)).toBeUndefined();
   });
 
+  it('marca la sala como FINISHED si sale el último jugador', async () => {
+    roomFindUnique.mockResolvedValue(baseRoom);
+    userFindUnique.mockResolvedValue(guest);
+    roomPlayerDeleteMany.mockResolvedValue({ count: 1 });
+    roomPlayerCount.mockResolvedValue(0); // quedó vacía
+
+    await leaveRoom(guest.accountNumber, 'ABC-123');
+
+    expect(roomUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { code: 'ABC-123', status: 'WAITING' },
+        data: { status: 'FINISHED' },
+      })
+    );
+  });
+
   it('no deja salir de una partida en curso', async () => {
     roomFindUnique.mockResolvedValue({ ...baseRoom, status: 'PLAYING' });
 
@@ -239,8 +282,11 @@ describe('leaveRoom', () => {
 });
 
 describe('getAvailableRooms', () => {
-  it('devuelve solo salas WAITING como resumen público', async () => {
-    roomFindMany.mockResolvedValue([baseRoom]);
+  it('devuelve solo salas WAITING con jugadores como resumen público', async () => {
+    roomFindMany.mockResolvedValue([
+      baseRoom,
+      { ...baseRoom, code: 'EMPTY-1', _count: { players: 0 } },
+    ]);
 
     const rooms = await getAvailableRooms();
 
