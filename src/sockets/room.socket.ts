@@ -41,9 +41,9 @@ const fail = (ack: unknown, error: unknown) => {
 export const registerRoomHandlers = (io: Server, socket: Socket): void => {
   const accountNumber = socket.data.accountNumber as string;
 
-  socket.on("room:create", async (payload: { name?: unknown; maxPlayers?: unknown; winMode?: unknown; alias?: unknown }, ack: unknown) => {
+  socket.on("room:create", async (payload: { name?: unknown; maxPlayers?: unknown; winModes?: unknown[]; alias?: unknown }, ack: unknown) => {
     try {
-      const room = await createRoom(accountNumber, payload?.name, payload?.maxPlayers, payload?.winMode, payload?.alias);
+      const room = await createRoom(accountNumber, payload?.name, payload?.maxPlayers, payload?.winModes, payload?.alias);
       socket.join(room.code);
       socket.data.roomCode = room.code;
       ok(ack, room);

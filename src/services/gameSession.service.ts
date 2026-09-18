@@ -40,7 +40,7 @@ export const startGame = async (
   roomCode: string,
   boards: Record<string, playerBoard>,
   fullDeck: Card[],
-  targetWinMode: string
+  targetWinModes: string[]
 ): Promise<GameSession> => {
       const existing = GameSessionsStore.get(roomCode);
   if (existing && existing.status === GameSessionStatus.PLAYING) {
@@ -60,7 +60,7 @@ export const startGame = async (
     boards,
     winner: null,
     winPattern: null,
-    targetWinMode,
+    targetWinModes,
     intervalId: null,
     createdAt: new Date(),
   };
@@ -115,9 +115,9 @@ const scheduleNextCall = (roomCode: string): void => {
 export const checkVictory = (
   board: playerBoard,
   calledCards: Card[],
-  targetWinMode: string
+  targetWinModes: string[]
 ): { won: boolean; pattern: WinPattern | null } => {
-  return BoardOperations.checkVictory(board, calledCards, targetWinMode);
+  return BoardOperations.checkVictory(board, calledCards, targetWinModes);
 };
 
 /**
@@ -138,7 +138,7 @@ export const claimVictory = async (
   const board = session.boards[accountNumber];
   if (!board) throw new GameSessionError("Ese jugador no tiene tablero en esta partida");
 
-  const result = checkVictory(board, session.calledCards, session.targetWinMode);
+  const result = checkVictory(board, session.calledCards, session.targetWinModes);
 
   if (result.won) {
     await finishGame(roomCode, accountNumber, result.pattern);
@@ -213,7 +213,7 @@ export const getPublicState = (roomCode: string) => {
     winner: session.winner,
     winnerAlias: session.winner ? aliases[session.winner] ?? session.winner : null,
     winPattern: session.winPattern,
-    targetWinMode: session.targetWinMode,
+    targetWinModes: session.targetWinModes,
     players: Object.keys(session.boards).map((accountNumber) => ({
       accountNumber,
       alias: aliases[accountNumber] ?? accountNumber,

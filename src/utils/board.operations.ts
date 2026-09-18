@@ -47,13 +47,14 @@ export class BoardOperations {
   }
 
   /**
-   * Valida si un tablero cumple alguna condición de victoria.
-   * Separa la lógica pura del dominio del servicio de estado (gameSession).
+   * Valida si un tablero cumple ALGUNA de las condiciones de victoria
+   * habilitadas para la sala. Si cumple varias, se reporta la más "alta"
+   * según el orden de prioridad (el cartón lleno es lo más fuerte).
    */
   public static checkVictory(
     board: playerBoard,
     calledCards: Card[],
-    targetWinMode: string
+    targetWinModes: string[]
   ): { won: boolean; pattern: WinPattern | null } {
     const marks = this.getMarks(board, calledCards);
 
@@ -73,26 +74,21 @@ export class BoardOperations {
       [8, 9, 12, 13], [9, 10, 13, 14], [10, 11, 14, 15]
     ];
 
-    switch (targetWinMode) {
-      case "FULL_BOARD":
-        if (marks.every(Boolean)) return { won: true, pattern: "FULL_BOARD" };
-        break;
-      case "CORNERS":
-        if (isLineComplete(corners)) return { won: true, pattern: "CORNERS" };
-        break;
-      case "LINE":
-        if (lines.some(isLineComplete)) return { won: true, pattern: "LINE" };
-        break;
-      case "CENTER_2X2":
-        if (isLineComplete(center2x2)) return { won: true, pattern: "CENTER_2X2" as any };
-        break;
-      case "SQUARE_2X2":
-        if (square2x2.some(isLineComplete)) return { won: true, pattern: "SQUARE_2X2" as any };
-        break;
-      default:
-        // Fallback to FULL_BOARD
-        if (marks.every(Boolean)) return { won: true, pattern: "FULL_BOARD" };
-        break;
+    const checks: Record<string, () => boolean> = {
+      LINE: () => lines.some(isLineComplete),
+      CORNERS: () => isLineComplete(corners),
+      CENTER_2X2: () => isLineComplete(center2x2),
+      SQUARE_2X2: () => square2x2.some(isLineComplete),
+      FULL_BOARD: () => marks.every(Boolean),
+    };
+
+    const enabled = new Set(targetWinModes);
+    const priority: WinPattern[] = ["FULL_BOARD", "CENTER_2X2", "SQUARE_2X2", "CORNERS", "LINE"];
+
+    for (const pattern of priority) {
+      if (enabled.has(pattern) && checks[pattern]!()) {
+        return { won: true, pattern };
+      }
     }
 
     return { won: false, pattern: null };

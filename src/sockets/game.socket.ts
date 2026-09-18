@@ -77,7 +77,12 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
         boards[player.accountNumber] = board;
       }
 
-      const session = await startGame(code, boards, allCards, room.winMode);
+      const session = await startGame(
+        code,
+        boards,
+        allCards,
+        room.winModes && room.winModes.length > 0 ? room.winModes : ["FULL_BOARD"]
+      );
 
       // Cada jugador recibe SOLO su tablero por su canal personal.
       for (const [playerAccount, board] of Object.entries(boards)) {

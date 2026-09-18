@@ -17,7 +17,7 @@ export interface GameSession {
   boards: Record<string, playerBoard>; // accountNumber -> tabla del jugador
   winner: string | null;
   winPattern: WinPattern | null;
-  targetWinMode: string;
+  targetWinModes: string[];
   intervalId: ReturnType<typeof setTimeout> | null; // referencia del cantor automático, para poder detenerlo
   createdAt: Date;
 }

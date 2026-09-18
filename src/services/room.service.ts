@@ -15,6 +15,9 @@ export const roomEvents = new EventEmitter();
 
 export class RoomError extends Error {}
 
+// Modos de victoria válidos; el host puede elegir varios.
+export const VALID_WIN_MODES = ["LINE", "CORNERS", "CENTER_2X2", "SQUARE_2X2", "FULL_BOARD"] as const;
+
 // --- Auto-borrado de salas vacías ---
 // Si una sala en WAITING se queda sin jugadores, se borra pasado EMPTY_ROOM_TTL_MS.
 const EMPTY_ROOM_TTL_MS = 60_000;
@@ -70,7 +73,7 @@ export const createRoom = async (
   hostAccountNumber: string,
   name: unknown,
   maxPlayers: unknown,
-  winMode: unknown,
+  winModes: unknown,
   alias?: unknown
 ) => {
   const nameCheck = validateRoomName(name);
@@ -79,6 +82,15 @@ export const createRoom = async (
   if (!Number.isInteger(maxPlayers) || (maxPlayers as number) < 2) {
     throw new RoomError("La sala debe permitir al menos 2 jugadores");
   }
+
+  // Normaliza la lista de modos: solo se aceptan los conocidos, sin duplicados.
+  const requestedModes = Array.isArray(winModes)
+    ? winModes.filter((m): m is string => typeof m === "string")
+    : [];
+  const validModes = [...new Set(requestedModes)].filter((m) =>
+    (VALID_WIN_MODES as readonly string[]).includes(m)
+  );
+  const normalizedModes = validModes.length > 0 ? validModes : ["FULL_BOARD"];
 
   let aliasValue: string | null = null;
   if (alias !== undefined && alias !== null) {
@@ -105,7 +117,7 @@ export const createRoom = async (
         name: nameCheck.value,
         status: "WAITING",
         maxPlayers: maxPlayers as number,
-        winMode: typeof winMode === "string" ? winMode : "FULL_BOARD",
+        winModes: normalizedModes,
       },
     });
 
