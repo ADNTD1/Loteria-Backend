@@ -6,7 +6,7 @@ export enum GameSessionStatus {
   FINISHED = "FINISHED",
 }
 
-export type WinPattern = "LINE" | "FULL_BOARD" | "CORNERS";
+export type WinPattern = "LINE" | "FULL_BOARD" | "CORNERS" | "CENTER_2X2" | "SQUARE_2X2";
 
 export interface GameSession {
   roomCode: string;
@@ -17,6 +17,7 @@ export interface GameSession {
   boards: Record<string, playerBoard>; // accountNumber -> tabla del jugador
   winner: string | null;
   winPattern: WinPattern | null;
+  targetWinMode: string;
   intervalId: ReturnType<typeof setTimeout> | null; // referencia del cantor automático, para poder detenerlo
   createdAt: Date;
 }

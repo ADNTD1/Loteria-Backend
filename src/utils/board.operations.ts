@@ -52,7 +52,8 @@ export class BoardOperations {
    */
   public static checkVictory(
     board: playerBoard,
-    calledCards: Card[]
+    calledCards: Card[],
+    targetWinMode: string
   ): { won: boolean; pattern: WinPattern | null } {
     const marks = this.getMarks(board, calledCards);
 
@@ -65,17 +66,33 @@ export class BoardOperations {
     ];
 
     const corners: number[] = [0, 3, 12, 15];
+    const center2x2: number[] = [5, 6, 9, 10];
+    const square2x2: number[][] = [
+      [0, 1, 4, 5], [1, 2, 5, 6], [2, 3, 6, 7],
+      [4, 5, 8, 9], [5, 6, 9, 10], [6, 7, 10, 11],
+      [8, 9, 12, 13], [9, 10, 13, 14], [10, 11, 14, 15]
+    ];
 
-    if (marks.every(Boolean)) {
-      return { won: true, pattern: "FULL_BOARD" };
-    }
-
-    if (isLineComplete(corners)) {
-      return { won: true, pattern: "CORNERS" };
-    }
-
-    if (lines.some(isLineComplete)) {
-      return { won: true, pattern: "LINE" };
+    switch (targetWinMode) {
+      case "FULL_BOARD":
+        if (marks.every(Boolean)) return { won: true, pattern: "FULL_BOARD" };
+        break;
+      case "CORNERS":
+        if (isLineComplete(corners)) return { won: true, pattern: "CORNERS" };
+        break;
+      case "LINE":
+        if (lines.some(isLineComplete)) return { won: true, pattern: "LINE" };
+        break;
+      case "CENTER_2X2":
+        if (isLineComplete(center2x2)) return { won: true, pattern: "CENTER_2X2" as any };
+        break;
+      case "SQUARE_2X2":
+        if (square2x2.some(isLineComplete)) return { won: true, pattern: "SQUARE_2X2" as any };
+        break;
+      default:
+        // Fallback to FULL_BOARD
+        if (marks.every(Boolean)) return { won: true, pattern: "FULL_BOARD" };
+        break;
     }
 
     return { won: false, pattern: null };

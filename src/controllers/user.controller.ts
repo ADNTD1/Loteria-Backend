@@ -178,3 +178,52 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 };
+
+/**
+ * @swagger
+ * /api/users/ranking:
+ *   get:
+ *     summary: Obtener tabla de clasificación de jugadores
+ *     description: Retorna la lista de usuarios ordenada por victorias totales (ranked).
+ *     tags:
+ *       - Ranking
+ *     responses:
+ *       200:
+ *         description: Lista de clasificación obtenida correctamente
+ *       500:
+ *         description: Error interno del servidor
+ */
+export const getRanking = async (_req: Request, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        accountNumber: true,
+        name: true,
+        totalWins: true,
+      },
+      orderBy: [
+        { totalWins: "desc" },
+        { name: "asc" },
+      ],
+      take: 25,
+    });
+
+    const ranking = users.map((u, index) => ({
+      rank: index + 1,
+      accountNumber: u.accountNumber,
+      name: u.name,
+      totalWins: u.totalWins,
+    }));
+
+    return res.json({
+      ok: true,
+      data: ranking,
+    });
+  } catch (error) {
+    console.error("Error al obtener el ranking:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error interno al obtener el ranking",
+    });
+  }
+};

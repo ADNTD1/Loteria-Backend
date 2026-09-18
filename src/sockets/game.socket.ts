@@ -45,7 +45,7 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
   socket.on("game:start", async (payload: { code?: string }, ack: unknown) => {
     try {
       const code = requireCode(payload?.code);
-      await assertRoomHost(code, accountNumber);
+      const room = await assertRoomHost(code, accountNumber);
 
       const players = await getRoomPlayers(code);
       const allCards = await cardRepository.findAll();
@@ -68,7 +68,7 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
         boards[player.accountNumber] = board;
       }
 
-      const session = await startGame(code, boards, allCards);
+      const session = await startGame(code, boards, allCards, room.winMode);
 
       // Cada jugador recibe SOLO su tablero por su canal personal.
       for (const [playerAccount, board] of Object.entries(boards)) {

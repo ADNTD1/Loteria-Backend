@@ -46,11 +46,17 @@ export const startRoomJanitor = (): void => {
   timer.unref();
 };
 
-/** Marca la sala como vacía (o quita la marca si alguien entró). */
+/** Marca la sala como inactiva si no quedan jugadores esperando. */
 const markEmptyState = async (code: string): Promise<void> => {
   const count = await prisma.roomPlayer.count({ where: { room: { code } } });
   if (count === 0) {
-    emptySince.set(code, Date.now());
+    emptySince.delete(code);
+    await prisma.room.updateMany({
+      where: { code, status: "WAITING" },
+      data: { status: "FINISHED" },
+    });
+    AliasesStore.clearRoom(code);
+    roomEvents.emit("rooms:changed");
   } else {
     emptySince.delete(code);
   }
@@ -64,6 +70,7 @@ export const createRoom = async (
   hostAccountNumber: string,
   name: unknown,
   maxPlayers: unknown,
+  winMode: unknown,
   alias?: unknown
 ) => {
   const nameCheck = validateRoomName(name);
@@ -98,6 +105,7 @@ export const createRoom = async (
         name: nameCheck.value,
         status: "WAITING",
         maxPlayers: maxPlayers as number,
+        winMode: typeof winMode === "string" ? winMode : "FULL_BOARD",
       },
     });
 
@@ -146,7 +154,15 @@ export const joinRoom = async (
   });
   if (!room) throw new RoomError("La sala especificada no fue encontrada");
 
+  if (room.status === "FINISHED") throw new RoomError("La sala está inactiva y ya no está disponible");
   if (room.status !== "WAITING") throw new RoomError("La partida de la sala ya comenzó");
+  if (room._count.players === 0) {
+    await prisma.room.updateMany({
+      where: { code, status: "WAITING" },
+      data: { status: "FINISHED" },
+    });
+    throw new RoomError("La sala está inactiva y ya no está disponible");
+  }
 
   const existingPlayer = await prisma.roomPlayer.findFirst({
     where: { roomId: room.id, userId: user.id },
@@ -181,7 +197,7 @@ export const joinRoom = async (
 
 /**
  * Saca al jugador de una sala en WAITING. Si la sala queda vacía,
- * se marca para borrado automático (ver startRoomJanitor).
+ * se marca como inactiva (status FINISHED) y se libera.
  */
 export const leaveRoom = async (accountNumber: string, code: unknown): Promise<void> => {
   if (typeof code !== "string" || !code) throw new RoomError("El código de sala es requerido");
@@ -205,7 +221,7 @@ export const leaveRoom = async (accountNumber: string, code: unknown): Promise<v
   roomEvents.emit("room:playersChanged", { roomCode: code });
 };
 
-/** Salas en WAITING, para la lista pública del lobby. */
+/** Salas en WAITING con jugadores esperando, para la lista pública del lobby. */
 export const getAvailableRooms = async (): Promise<RoomSummary[]> => {
   const rooms = await prisma.room.findMany({
     where: { status: "WAITING" },
@@ -213,13 +229,15 @@ export const getAvailableRooms = async (): Promise<RoomSummary[]> => {
     orderBy: { createdAt: "desc" },
   });
 
-  return rooms.map((room) => ({
-    code: room.code,
-    name: room.name,
-    hostAccountNumber: room.hostAccountNumber,
-    players: room._count.players,
-    maxPlayers: room.maxPlayers,
-  }));
+  return rooms
+    .filter((room) => room._count.players > 0)
+    .map((room) => ({
+      code: room.code,
+      name: room.name,
+      hostAccountNumber: room.hostAccountNumber,
+      players: room._count.players,
+      maxPlayers: room.maxPlayers,
+    }));
 };
 
 /** Jugadores de una sala con su alias (si pusieron uno). */

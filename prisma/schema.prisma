@@ -42,6 +42,7 @@ model Room {
   name              String
   status            RoomStatus @default(WAITING)
   maxPlayers        Int
+  winMode           String     @default("FULL_BOARD")
   createdAt         DateTime   @default(now())
 
   host User @relation("RoomHost", fields: [hostAccountNumber], references: [accountNumber])
