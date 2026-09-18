@@ -5,14 +5,14 @@ import { authenticateToken } from "../middlewares/auth.middleware.js"
 
 const router = Router();
 
-router.post('/', 
+router.post('/',
 	rateLimit({ windowMs: 60_000,limit: 30,}),
-	//authenticateToken, 
+	authenticateToken,
 	createRoom);
 
-router.post('/join', 
+router.post('/join',
 	rateLimit({ windowMs: 60_000,limit: 40,}),
-	//authenticateToken, 
+	authenticateToken,
 	joinRoom)
 
 router.get('/:code', 
