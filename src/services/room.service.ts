@@ -3,6 +3,7 @@ import { EventEmitter } from "events";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 import { validateRoomName } from "../utils/validateRoomName.js";
 import { AliasesStore, validateAlias } from "../state/aliases.store.js";
+import { assignBoardToPlayer } from "./board.service.js";
 import type { RoomSummary } from "../interfaces/room.interface.js";
 
 const prisma = new PrismaClient();
@@ -113,10 +114,13 @@ export const createRoom = async (
   if (aliasValue) AliasesStore.set(code, hostAccountNumber, aliasValue);
   emptySince.delete(code);
 
+  // RF-04: el host tambien es jugador, se le asigna su tabla de una vez.
+  const hostBoard = await assignBoardToPlayer(code, hostAccountNumber);
+
   roomEvents.emit("rooms:changed");
   roomEvents.emit("room:playersChanged", { roomCode: code });
 
-  return newRoom;
+  return { ...newRoom, board: hostBoard };
 };
 
 /**
@@ -149,9 +153,10 @@ export const joinRoom = async (
   });
 
   if (existingPlayer) {
-    return { room, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
+    // Idempotente: se le devuelve la MISMA tabla que ya tenia.
+    const board = await assignBoardToPlayer(code, accountNumber);
+    return { room, board, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
   }
-
   if (room._count.players >= room.maxPlayers) throw new RoomError("La sala está llena");
 
   if (AliasesStore.isTaken(code, accountNumber, aliasCheck.value)) {
@@ -165,10 +170,13 @@ export const joinRoom = async (
   AliasesStore.set(code, accountNumber, aliasCheck.value);
   emptySince.delete(code);
 
+  // RF-04: al unirse, el jugador recibe su tabla valida antes de comenzar.
+  const board = await assignBoardToPlayer(code, accountNumber);
+
   roomEvents.emit("rooms:changed");
   roomEvents.emit("room:playersChanged", { roomCode: code });
 
-  return { room, alreadyJoined: false, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
+  return { room, board, alreadyJoined: false, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
 };
 
 /**

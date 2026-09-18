@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { CardRepository } from "../repositories/card.repository.js";
-import { generateRandomBoard } from "../utils/generateRandomBoard.js";
+import { assignBoardToPlayer, getBoardsForRoom } from "../services/board.service.js";
+import { BoardOperations } from "../utils/board.operations.js";
 import type { playerBoard } from "../interfaces/game.interface.js";
 import { assertRoomHost, getRoomPlayers } from "../services/room.service.js";
 import {
@@ -49,9 +50,22 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
       const players = await getRoomPlayers(code);
       const allCards = await cardRepository.findAll();
 
+      // RF-04: las tablas ya se asignaron cuando cada jugador se unio a la sala.
+      // Aqui solo se recuperan; si alguno no tiene (caso raro), se le asigna ahora.
+      const assigned = getBoardsForRoom(code);
       const boards: Record<string, playerBoard> = {};
+
       for (const player of players) {
-        boards[player.accountNumber] = generateRandomBoard(player.accountNumber, allCards);
+        const board =
+          assigned[player.accountNumber] ??
+          (await assignBoardToPlayer(code, player.accountNumber));
+
+        if (!BoardOperations.isValidBoard(board)) {
+          fail(ack, new GameSessionError(`La tabla del jugador ${player.accountNumber} no es valida`));
+          return;
+        }
+
+        boards[player.accountNumber] = board;
       }
 
       const session = await startGame(code, boards, allCards);
