@@ -6,7 +6,7 @@ import { gameSessionEvents } from "../services/gameSession.service.js";
 export const initGameSessionSocket = (httpServer: HTTPServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: process.env.FRONTEND_URL ?? "http://localhost:5173",
       methods: ["GET", "POST"],
     },
   });

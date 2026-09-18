@@ -12,7 +12,10 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js
 // La app se exporta sin app.listen() para poder probarla con supertest.
 const app = express();
 
-app.use(cors())
+app.use(cors({
+  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

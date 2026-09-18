@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import http from 'http';
 import app from './app.js';
 import { initGameSessionSocket } from './sockets/gameSession.socket.js';
 
-const PORT = process.env.port || 3000;
+const PORT = process.env.PORT || 3000;
 
 const httpServer = http.createServer(app);
 initGameSessionSocket(httpServer);
