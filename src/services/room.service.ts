@@ -167,7 +167,7 @@ export const joinRoom = async (
   if (!room) throw new RoomError("La sala especificada no fue encontrada");
 
   if (room.status === "FINISHED") throw new RoomError("La sala está inactiva y ya no está disponible");
-  if (room.status !== "WAITING") throw new RoomError("La partida de la sala ya comenzó");
+  
   if (room._count.players === 0) {
     await prisma.room.updateMany({
       where: { code, status: "WAITING" },
@@ -185,15 +185,26 @@ export const joinRoom = async (
     const board = await assignBoardToPlayer(code, accountNumber);
     return { room, board, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
   }
+
+  if (room.status !== "WAITING") throw new RoomError("La partida de la sala ya comenzó");
   if (room._count.players >= room.maxPlayers) throw new RoomError("La sala está llena");
 
   if (AliasesStore.isTaken(code, accountNumber, aliasCheck.value)) {
     throw new RoomError(`El alias "${aliasCheck.value}" ya está en uso en esta sala`);
   }
 
-  await prisma.roomPlayer.create({
-    data: { roomId: room.id, userId: user.id },
-  });
+  try {
+    await prisma.roomPlayer.create({
+      data: { roomId: room.id, userId: user.id },
+    });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Ignorar si se unio concurrentemente (React Strict Mode o doble clic)
+      const board = await assignBoardToPlayer(code, accountNumber);
+      return { room, board, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
+    }
+    throw error;
+  }
 
   AliasesStore.set(code, accountNumber, aliasCheck.value);
   emptySince.delete(code);

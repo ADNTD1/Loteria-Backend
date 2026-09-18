@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginWithAccountNumber, logoutUser, getMe, getRanking } from "../controllers/user.controller.js";
+import { loginWithAccountNumber, loginGuest, logoutUser, getMe, getRanking } from "../controllers/user.controller.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import rateLimit from "express-rate-limit";
 
@@ -10,6 +10,13 @@ router.get(
   "/ranking",
   rateLimit({ windowMs: 60_000, limit: 60 }),
   getRanking
+);
+
+// POST http://localhost:3000/api/users/guest
+router.post(
+  "/guest",
+  rateLimit({ windowMs: 60_000, limit: 10 }),
+  loginGuest
 );
 
 // POST http://localhost:3000/api/users/login

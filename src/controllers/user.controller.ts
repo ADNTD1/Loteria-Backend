@@ -39,6 +39,48 @@ const activeSessions = new Set<string>();
  *       500:
  *         description: Error interno del servidor
  */
+export const loginGuest = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    if (!name || String(name).trim() === "") {
+      return res.status(400).json({ ok: false, message: "El nombre es obligatorio" });
+    }
+
+    const guestName = String(name).trim().substring(0, 30);
+    const accountNumber = `GUEST-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+
+    const user = await prisma.user.create({
+      data: {
+        accountNumber,
+        name: `(Invitado) ${guestName}`,
+        totalWins: 0,
+      }
+    });
+
+    const token = generateToken(user.accountNumber);
+
+    activeSessions.add(user.accountNumber);
+
+    return res.status(200).json({
+      ok: true,
+      data: {
+        user: {
+          id: user.id,
+          accountNumber: user.accountNumber,
+          name: user.name,
+        },
+        token,
+      }
+    });
+  } catch (error) {
+    console.error("Error en loginGuest:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error interno del servidor",
+    });
+  }
+};
+
 export const loginWithAccountNumber = async (req: Request, res: Response) => {
   try {
     const { accountNumber } = req.body;
@@ -195,7 +237,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const getRanking = async (_req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
+    const allUsers = await prisma.user.findMany({
       select: {
         accountNumber: true,
         name: true,
@@ -205,15 +247,17 @@ export const getRanking = async (_req: Request, res: Response) => {
         { totalWins: "desc" },
         { name: "asc" },
       ],
-      take: 25,
     });
 
-    const ranking = users.map((u, index) => ({
-      rank: index + 1,
-      accountNumber: u.accountNumber,
-      name: u.name,
-      totalWins: u.totalWins,
-    }));
+    const ranking = allUsers
+      .filter((u) => /^\d+$/.test(u.accountNumber))
+      .slice(0, 25)
+      .map((u, index) => ({
+        rank: index + 1,
+        accountNumber: u.accountNumber,
+        name: u.name,
+        totalWins: u.totalWins,
+      }));
 
     return res.json({
       ok: true,

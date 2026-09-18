@@ -3,7 +3,7 @@
 const roomAliases = new Map<string, Map<string, string>>();
 
 export const ALIAS_MIN_LENGTH = 3;
-export const ALIAS_MAX_LENGTH = 30;
+export const ALIAS_MAX_LENGTH = 45;
 
 /**
  * Valida el formato de un alias. Devuelve el alias limpio (sin espacios
@@ -24,8 +24,8 @@ export const validateAlias = (alias: unknown): { ok: boolean; value: string; err
     return { ok: false, value: "", error: `El alias no puede pasar de ${ALIAS_MAX_LENGTH} caracteres` };
   }
 
-  if (!/^[\p{L}\p{N} _-]+$/u.test(clean)) {
-    return { ok: false, value: "", error: "El alias solo puede tener letras, números, espacios, guiones y guiones bajos" };
+  if (!/^[\p{L}\p{N} _\-()]+$/u.test(clean)) {
+    return { ok: false, value: "", error: "El alias solo puede tener letras, números, espacios, guiones, guiones bajos y paréntesis" };
   }
 
   return { ok: true, value: clean };
