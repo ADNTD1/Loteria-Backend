@@ -167,7 +167,7 @@ export const joinRoom = async (
   if (!room) throw new RoomError("La sala especificada no fue encontrada");
 
   if (room.status === "FINISHED") throw new RoomError("La sala está inactiva y ya no está disponible");
-  if (room.status !== "WAITING") throw new RoomError("La partida de la sala ya comenzó");
+  
   if (room._count.players === 0) {
     await prisma.room.updateMany({
       where: { code, status: "WAITING" },
@@ -185,6 +185,8 @@ export const joinRoom = async (
     const board = await assignBoardToPlayer(code, accountNumber);
     return { room, board, alreadyJoined: true, alias: aliasCheck.value, aliases: AliasesStore.getAllForRoom(code) };
   }
+
+  if (room.status !== "WAITING") throw new RoomError("La partida de la sala ya comenzó");
   if (room._count.players >= room.maxPlayers) throw new RoomError("La sala está llena");
 
   if (AliasesStore.isTaken(code, accountNumber, aliasCheck.value)) {

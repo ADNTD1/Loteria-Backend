@@ -3,7 +3,7 @@
 const roomAliases = new Map<string, Map<string, string>>();
 
 export const ALIAS_MIN_LENGTH = 3;
-export const ALIAS_MAX_LENGTH = 30;
+export const ALIAS_MAX_LENGTH = 45;
 
 /**
  * Valida el formato de un alias. Devuelve el alias limpio (sin espacios

@@ -195,7 +195,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const getRanking = async (_req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
+    const allUsers = await prisma.user.findMany({
       select: {
         accountNumber: true,
         name: true,
@@ -205,15 +205,17 @@ export const getRanking = async (_req: Request, res: Response) => {
         { totalWins: "desc" },
         { name: "asc" },
       ],
-      take: 25,
     });
 
-    const ranking = users.map((u, index) => ({
-      rank: index + 1,
-      accountNumber: u.accountNumber,
-      name: u.name,
-      totalWins: u.totalWins,
-    }));
+    const ranking = allUsers
+      .filter((u) => /^\d+$/.test(u.accountNumber))
+      .slice(0, 25)
+      .map((u, index) => ({
+        rank: index + 1,
+        accountNumber: u.accountNumber,
+        name: u.name,
+        totalWins: u.totalWins,
+      }));
 
     return res.json({
       ok: true,
