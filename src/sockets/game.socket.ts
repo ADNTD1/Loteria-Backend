@@ -15,6 +15,10 @@ import { userChannel } from "./channels.js";
 
 const cardRepository = new CardRepository();
 
+// RF-23: Registro en memoria para evitar fuerza bruta y spam de reclamos
+const lastClaimTime = new Map<string, number>();
+const CLAIM_COOLDOWN_MS = 1500; // 1.5 segundos entre reclamos por jugador
+
 type Ack = (response: { ok: boolean; data?: unknown; message?: string }) => void;
 
 const ok = (ack: unknown, data?: unknown) => {
@@ -84,6 +88,20 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
   socket.on("game:claim", async (payload: { code?: string }, ack: unknown) => {
     try {
       const code = requireCode(payload?.code);
+
+      // RF-23: Validación de cooldown para mitigar spam/fuerza bruta
+      // 1. Mitigación de spam/fuerza bruta
+      const now = Date.now();
+      const last = lastClaimTime.get(accountNumber) ?? 0;
+      if (now - last < CLAIM_COOLDOWN_MS) {
+        fail(
+          ack,
+          new GameSessionError("Demasiados reclamos seguidos. Espera un momento antes de volver a cantar lotería.")
+        );
+        return;
+      }
+      lastClaimTime.set(accountNumber, now);
+      // 2. Validación de victoria en servidor
       const result = await claimVictory(code, accountNumber);
 
       if (!result.won) {
