@@ -16,7 +16,8 @@ const prisma = new PrismaClient();
 // Emisor de eventos para broadcast de cambios en sesiones
 export const gameSessionEvents = new EventEmitter();
 
-// Cada cuanto tiempo el "cantor" automático canta una carta nueva (ms)
+// Tiempos del cantor automático (ms)
+const INITIAL_CALL_DELAY_MS = 10000;
 const CALL_INTERVAL_MS = 4000;
 
 const shuffle = <T>(arr: T[]): T[] => {
@@ -66,7 +67,7 @@ export const startGame = async (
   };
 
   GameSessionsStore.set(session);
-  scheduleNextCall(roomCode);
+  scheduleNextCall(roomCode, true);
 
   // La sala pasa a PLAYING en BD: sale de la lista de disponibles
   // y joinRoom la rechaza mientras la partida esté en curso.
@@ -84,7 +85,8 @@ export const startGame = async (
  * Programa el siguiente canto automático. Se auto-detiene si ya no hay
  * cartas, si ya hay ganador, o si la partida fue detenida manualmente.
  */
-const scheduleNextCall = (roomCode: string): void => {
+const scheduleNextCall = (roomCode: string, isFirstCall: boolean = false): void => {
+  const delay = isFirstCall ? INITIAL_CALL_DELAY_MS : CALL_INTERVAL_MS;
   const timeout = setTimeout(() => {
     const session = GameSessionsStore.get(roomCode);
 
@@ -101,8 +103,8 @@ const scheduleNextCall = (roomCode: string): void => {
 
     gameSessionEvents.emit("card:called", { roomCode, card, calledCount: session.calledCards.length });
 
-    scheduleNextCall(roomCode);
-  }, CALL_INTERVAL_MS);
+    scheduleNextCall(roomCode, false);
+  }, delay);
 
   const session = GameSessionsStore.get(roomCode);
   if (session) session.intervalId = timeout;
