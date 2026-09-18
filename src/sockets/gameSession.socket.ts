@@ -2,6 +2,15 @@ import { Server as HTTPServer } from "http";
 import { Server } from "socket.io";
 import { verifyToken } from "../utils/jwt.utils.js";
 import { gameSessionEvents } from "../services/gameSession.service.js";
+import {
+  roomEvents,
+  getAvailableRooms,
+  getRoomPlayers,
+  startRoomJanitor,
+} from "../services/room.service.js";
+import { registerRoomHandlers } from "./room.socket.js";
+import { registerGameHandlers } from "./game.socket.js";
+import { LOBBY_CHANNEL, userChannel } from "./channels.js";
 
 export const initGameSessionSocket = (httpServer: HTTPServer) => {
   const io = new Server(httpServer, {
@@ -29,19 +38,17 @@ export const initGameSessionSocket = (httpServer: HTTPServer) => {
 
   // Al conectar
   io.on("connection", (socket) => {
-    // Escucha evento del cliente para unirse a una sala
-    socket.on("room:join", (data: { roomCode: string }) => {
-      const { roomCode } = data;
-      socket.join(roomCode);
-      socket.data.roomCode = roomCode;
-    });
+    const accountNumber = socket.data.accountNumber as string;
 
-    socket.on("disconnect", () => {
-      // El cliente se fue
-    });
+    // Todos los clientes escuchan la lista de salas y tienen su canal personal.
+    socket.join(LOBBY_CHANNEL);
+    socket.join(userChannel(accountNumber));
+
+    registerRoomHandlers(io, socket);
+    registerGameHandlers(io, socket);
   });
 
-  // Suscribirse a los eventos del servicio de juego y hacer broadcast
+  // --- Broadcast de eventos de la partida ---
   gameSessionEvents.on("game:started", (data) => {
     io.to(data.roomCode).emit("game:started", data);
   });
@@ -53,6 +60,18 @@ export const initGameSessionSocket = (httpServer: HTTPServer) => {
   gameSessionEvents.on("game:finished", (data) => {
     io.to(data.roomCode).emit("game:finished", data);
   });
+
+  // --- Broadcast de eventos de salas ---
+  roomEvents.on("rooms:changed", async () => {
+    io.to(LOBBY_CHANNEL).emit("rooms:updated", await getAvailableRooms());
+  });
+
+  roomEvents.on("room:playersChanged", async ({ roomCode }) => {
+    io.to(roomCode).emit("room:players", await getRoomPlayers(roomCode));
+  });
+
+  // Borrado automático de salas que llevan 1 minuto sin jugadores.
+  startRoomJanitor();
 
   return io;
 };

@@ -39,6 +39,7 @@ model Room {
   id                String     @id @default(uuid())
   hostAccountNumber String
   code              String     @unique
+  name              String
   status            RoomStatus @default(WAITING)
   maxPlayers        Int
   createdAt         DateTime   @default(now())

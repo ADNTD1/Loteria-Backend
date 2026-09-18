@@ -6,7 +6,12 @@ import {
 } from "../interfaces/gameSession.interface.js";
 import { GameSessionsStore } from "../state/gameSessions.store.js";
 import { AliasesStore } from "../state/aliases.store.js";
+import { roomEvents } from "./room.service.js";
+import { BoardOperations } from "../utils/board.operations.js";
+import { PrismaClient } from "@prisma/client";
 import { EventEmitter } from "events";
+
+const prisma = new PrismaClient();
 
 // Emisor de eventos para broadcast de cambios en sesiones
 export const gameSessionEvents = new EventEmitter();
@@ -31,11 +36,11 @@ export class GameSessionError extends Error {}
  * Inicia una partida para una sala: baraja el mazo completo y arranca
  * el cantor automático, que va agregando una carta cada CALL_INTERVAL_MS.
  */
-export const startGame = (
+export const startGame = async (
   roomCode: string,
   boards: Record<string, playerBoard>,
   fullDeck: Card[]
-): GameSession => {
+): Promise<GameSession> => {
       const existing = GameSessionsStore.get(roomCode);
   if (existing && existing.status === GameSessionStatus.PLAYING) {
     throw new GameSessionError(`La sala ${roomCode} ya tiene una partida activa`);
@@ -61,6 +66,14 @@ export const startGame = (
   GameSessionsStore.set(session);
   scheduleNextCall(roomCode);
 
+  // La sala pasa a PLAYING en BD: sale de la lista de disponibles
+  // y joinRoom la rechaza mientras la partida esté en curso.
+  await prisma.room.update({
+    where: { code: roomCode },
+    data: { status: "PLAYING" },
+  });
+  roomEvents.emit("rooms:changed");
+
   gameSessionEvents.emit("game:started", { roomCode, status: session.status });
 
   return session;
@@ -76,7 +89,7 @@ const scheduleNextCall = (roomCode: string): void => {
     if (!session || session.status !== GameSessionStatus.PLAYING) return;
 
     if (session.cursor >= session.deck.length) {
-      finishGame(roomCode, null, null); // se acabó el mazo, nadie cantó lotería
+      void finishGame(roomCode, null, null); // se acabó el mazo, nadie cantó lotería
       return;
     }
 
@@ -97,8 +110,6 @@ const scheduleNextCall = (roomCode: string): void => {
  * las cartas ya cantadas. Esta es la validación "oficial" del servidor,
  * el cliente nunca decide quién gana.
  */
-import { BoardOperations } from "../utils/board.operations.js";
-
 export const checkVictory = (
   board: playerBoard,
   calledCards: Card[]
@@ -110,10 +121,10 @@ export const checkVictory = (
  * Un jugador grita "¡Lotería!". Se revalida en servidor (nunca confiar en
  * el cliente) y, si es válido, se cierra la partida y se declara ganador.
  */
-export const claimVictory = (
+export const claimVictory = async (
   roomCode: string,
   accountNumber: string
-): { won: boolean; pattern: WinPattern | null } => {
+): Promise<{ won: boolean; pattern: WinPattern | null }> => {
   const session = GameSessionsStore.get(roomCode);
 
   if (!session) throw new GameSessionError(`No hay partida activa para la sala ${roomCode}`);
@@ -127,17 +138,17 @@ export const claimVictory = (
   const result = checkVictory(board, session.calledCards);
 
   if (result.won) {
-    finishGame(roomCode, accountNumber, result.pattern);
+    await finishGame(roomCode, accountNumber, result.pattern);
   }
 
   return result;
 };
 
-const finishGame = (
+const finishGame = async (
   roomCode: string,
   winner: string | null,
   pattern: WinPattern | null
-): void => {
+): Promise<void> => {
   const session = GameSessionsStore.get(roomCode);
   if (!session) return;
 
@@ -149,11 +160,39 @@ const finishGame = (
   session.intervalId = null;
 
   gameSessionEvents.emit("game:finished", { roomCode, winner, pattern });
+
+  // Persistir el resultado y cerrar la sala en BD.
+  if (winner) {
+    await prisma.$transaction([
+      prisma.match.create({
+        data: {
+          roomCode,
+          winnerAccount: winner,
+          totalPlayers: Object.keys(session.boards).length,
+          winMode: pattern ?? "FULL",
+        },
+      }),
+      prisma.user.update({
+        where: { accountNumber: winner },
+        data: { totalWins: { increment: 1 } },
+      }),
+    ]);
+  }
+
+  await prisma.room.update({
+    where: { code: roomCode },
+    data: { status: "FINISHED" },
+  });
+
+  // Limpieza de memoria: la sesión y los alias dejan de ser necesarios.
+  GameSessionsStore.delete(roomCode);
+  AliasesStore.clearRoom(roomCode);
+  roomEvents.emit("rooms:changed");
 };
 
 /** Detiene una partida manualmente (ej. el host cancela la sala). */
-export const stopGame = (roomCode: string): void => {
-  finishGame(roomCode, null, null);
+export const stopGame = async (roomCode: string): Promise<void> => {
+  await finishGame(roomCode, null, null);
 };
 
 /** Estado público de la partida, sin exponer los tableros de los demás jugadores. */

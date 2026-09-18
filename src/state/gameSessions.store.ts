@@ -1,7 +1,6 @@
 import type { GameSession } from "../interfaces/gameSession.interface.js";
 
-// Almacén temporal en memoria, igual filosofía que activeRooms en room.controller.ts
-// Cuando se migre a Prisma esto se vuelve un repository real (GameSessionRepository)
+// Almacén temporal en memoria de las partidas activas.
 const activeGameSessions = new Map<string, GameSession>();
 
 export const GameSessionsStore = {

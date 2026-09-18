@@ -1,10 +1,10 @@
-import type { Card } from "@prisma/client";
-
 export interface Room {
   id: string,
   hostAccountNumber: string,
   code: string,
+  name: string,
   status: RoomStatus,
+  maxPlayers: number,
   players: string[],
   createdAt: Date
 }
@@ -15,7 +15,11 @@ export enum RoomStatus {
   FINISHED = 'FINISHED'
 }
 
-export interface ActiveRoomState extends Room {
-  deck: Card[];
-  drawnCards: Card[];
+// Resumen público de una sala disponible, para la lista del lobby en tiempo real.
+export interface RoomSummary {
+  code: string,
+  name: string,
+  hostAccountNumber: string,
+  players: number,
+  maxPlayers: number
 }

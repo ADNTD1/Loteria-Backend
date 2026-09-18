@@ -64,6 +64,11 @@ export const AliasesStore = {
     return Object.fromEntries(aliases);
   },
 
+  /** Quita el alias de un jugador (cuando sale de la sala). */
+  remove(roomCode: string, accountNumber: string): void {
+    roomAliases.get(roomCode)?.delete(accountNumber);
+  },
+
   clearRoom(roomCode: string): void {
     roomAliases.delete(roomCode);
   },
