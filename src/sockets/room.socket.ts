@@ -12,6 +12,9 @@ import { AliasesStore } from "../state/aliases.store.js";
 // así el feed de notificaciones no se puede usar como chat libre.
 const PATTERN_LABELS: Record<string, string> = {
   LINE: "completó una línea",
+  DIAGONAL: "completó una diagonal",
+  ESCUADRA: "completó la escuadra",
+  EQUIS: "completó la equis",
   CORNERS: "consiguió las cuatro esquinas",
   FULL_BOARD: "completó el cartón lleno",
   CENTER_2X2: "consiguió el centro 2x2",
@@ -79,6 +82,22 @@ export const registerRoomHandlers = (io: Server, socket: Socket): void => {
       ok(ack, await getAvailableRooms());
     } catch (error) {
       fail(ack, error);
+    }
+  });
+
+  // Si el jugador cierra la pestaña o se le cae la conexión, lo sacamos de la
+  // sala como si hubiera presionado "Salir". Sin esto, su lugar queda ocupado
+  // para siempre y la sala nunca se borra.
+  // Si la partida ya empezó, leaveRoom se niega y lo dejamos dentro, para que
+  // pueda reconectarse.
+  socket.on("disconnect", async () => {
+    const code = socket.data.roomCode as string | undefined;
+    if (!code) return;
+
+    try {
+      await leaveRoom(accountNumber, code);
+    } catch {
+      // La sala ya no existe o la partida está en curso: no hay nada que limpiar.
     }
   });
 

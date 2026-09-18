@@ -6,7 +6,21 @@ export enum GameSessionStatus {
   FINISHED = "FINISHED",
 }
 
-export type WinPattern = "LINE" | "FULL_BOARD" | "CORNERS" | "CENTER_2X2" | "SQUARE_2X2";
+/**
+ * Cada patrón se canta una sola vez por partida.
+ * LINE (chorro) y SQUARE_2X2 (cuadrito) valen en cualquier posición de la
+ * tabla, pero cuentan una vez. DIAGONAL, ESCUADRA y EQUIS son independientes
+ * entre sí y del chorro.
+ */
+export type WinPattern =
+  | "LINE"
+  | "DIAGONAL"
+  | "ESCUADRA"
+  | "EQUIS"
+  | "CORNERS"
+  | "CENTER_2X2"
+  | "SQUARE_2X2"
+  | "FULL_BOARD";
 
 export interface GameSession {
   roomCode: string;
@@ -18,6 +32,9 @@ export interface GameSession {
   winner: string | null;
   winPattern: WinPattern | null;
   targetWinModes: string[];
+  scores: Record<string, number>;                        // accountNumber -> puntos acumulados
+  claimedPatterns: Partial<Record<WinPattern, string>>;  // patrón -> quién se lo llevó (se agota)
+  lastScoreAt: Record<string, number>;                   // para desempatar: quién llegó antes
   intervalId: ReturnType<typeof setTimeout> | null; // referencia del cantor automático, para poder detenerlo
   createdAt: Date;
 }

@@ -115,11 +115,24 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
       const result = await claimVictory(code, accountNumber);
 
       if (!result.won) {
-        fail(ack, new GameSessionError("Reclamo inválido: aún no completas un patrón ganador"));
+        fail(
+          ack,
+          new GameSessionError(
+            result.alreadyClaimed
+              ? "Esos patrones ya los cantó otro jugador"
+              : "Reclamo inválido: aún no completas un patrón ganador"
+          )
+        );
         return;
       }
 
-      ok(ack, { winner: accountNumber, pattern: result.pattern });
+      ok(ack, {
+        accountNumber,
+        patterns: result.patterns,
+        points: result.points,
+        scores: result.scores,
+        gameOver: result.gameOver,
+      });
     } catch (error) {
       fail(ack, error);
     }

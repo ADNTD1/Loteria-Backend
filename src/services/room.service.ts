@@ -16,7 +16,10 @@ export const roomEvents = new EventEmitter();
 export class RoomError extends Error {}
 
 // Modos de victoria válidos; el host puede elegir varios.
-export const VALID_WIN_MODES = ["LINE", "CORNERS", "CENTER_2X2", "SQUARE_2X2", "FULL_BOARD"] as const;
+export const VALID_WIN_MODES = [
+  "LINE", "DIAGONAL", "ESCUADRA", "EQUIS",
+  "CORNERS", "CENTER_2X2", "SQUARE_2X2", "FULL_BOARD",
+] as const;
 
 // --- Auto-borrado de salas vacías ---
 // Si una sala en WAITING se queda sin jugadores, se borra pasado EMPTY_ROOM_TTL_MS.
@@ -25,28 +28,60 @@ const JANITOR_INTERVAL_MS = 15_000;
 const emptySince = new Map<string, number>(); // roomCode -> timestamp en que quedó vacía
 
 export const startRoomJanitor = (): void => {
-  const timer = setInterval(async () => {
-    const now = Date.now();
-    for (const [code, since] of emptySince) {
-      if (now - since < EMPTY_ROOM_TTL_MS) continue;
-
-      const room = await prisma.room.findUnique({
-        where: { code },
-        include: { _count: { select: { players: true } } },
-      });
-
-      emptySince.delete(code);
-
-      if (!room || room.status !== "WAITING" || room._count.players > 0) continue;
-
-      await prisma.room.delete({ where: { code } });
-      AliasesStore.clearRoom(code);
-      roomEvents.emit("rooms:changed");
-    }
+  const timer = setInterval(() => {
+    void limpiarSalasVacias();
   }, JANITOR_INTERVAL_MS);
 
   // Que el temporizador no impida que el proceso termine (tests, shutdown).
   timer.unref();
+};
+
+/**
+ * Borra las salas sin jugadores que llevan más de EMPTY_ROOM_TTL_MS.
+ *
+ * Incluye las FINISHED a propósito: cuando el último jugador se va, la sala
+ * se marca como terminada, y si solo se borraran las WAITING se quedarían
+ * acumuladas en la base para siempre. El historial de partidas vive en Match,
+ * no aquí. Consulta la base de datos en vez de un mapa en memoria, así sigue
+ * funcionando después de reiniciar el servidor.
+ */
+export const limpiarSalasVacias = async (): Promise<number> => {
+  const limite = new Date(Date.now() - EMPTY_ROOM_TTL_MS);
+
+  const vacias = await prisma.room.findMany({
+    where: {
+      status: { in: ["WAITING", "FINISHED"] },
+      createdAt: { lt: limite },
+      players: { none: {} },
+    },
+    select: { code: true },
+  });
+
+  for (const { code } of vacias) {
+    await prisma.room.delete({ where: { code } });
+    AliasesStore.clearRoom(code);
+    emptySince.delete(code);
+  }
+
+  if (vacias.length > 0) roomEvents.emit("rooms:changed");
+
+  return vacias.length;
+};
+
+/**
+ * Al arrancar el servidor, las partidas que vivían en memoria ya no existen.
+ * Las salas que quedaron en PLAYING se cierran para que no se queden colgadas
+ * ni aparezcan como partidas en curso que nadie puede terminar.
+ */
+export const cerrarSalasHuerfanas = async (): Promise<number> => {
+  const { count } = await prisma.room.updateMany({
+    where: { status: "PLAYING" },
+    data: { status: "FINISHED" },
+  });
+
+  if (count > 0) roomEvents.emit("rooms:changed");
+
+  return count;
 };
 
 /** Marca la sala como inactiva si no quedan jugadores esperando. */
