@@ -6,10 +6,12 @@ import { authenticateToken } from "../middlewares/auth.middleware.js"
 
 const router = Router();
 
+// Genera un tablero aleatorio para la partida.
 router.get('/cards',
 	rateLimit({ windowMs: 60_000,limit: 100,}), // 100 peticiones por minuto
 	authenticateToken,
 	getAllCards);
+// Genera un tablero aleatorio para la partida.
 router.post('/board',
 	rateLimit({ windowMs: 60_000,limit: 50,}), // 50 peticiones por minuto
 	authenticateToken,
