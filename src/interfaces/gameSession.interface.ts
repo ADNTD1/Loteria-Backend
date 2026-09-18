@@ -12,7 +12,7 @@ export interface GameSession {
   roomCode: string;
   status: GameSessionStatus;
   deck: Card[];              // mazo completo, ya barajado, orden de canto
-  calledCards: Card[];       // cartas ya cantadas, en orden
+  calledCards: Card[];      // cartas ya cantadas, en orden
   cursor: number;            // índice de la siguiente carta a cantar dentro de deck
   boards: Record<string, playerBoard>; // accountNumber -> tabla del jugador
   winner: string | null;
