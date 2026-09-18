@@ -57,11 +57,7 @@ export const loginGuest = async (req: Request, res: Response) => {
       }
     });
 
-    const token = jwt.sign(
-      { id: user.id, accountNumber: user.accountNumber },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const token = generateToken(user.accountNumber);
 
     activeSessions.add(user.accountNumber);
 
