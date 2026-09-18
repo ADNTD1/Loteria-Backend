@@ -50,9 +50,17 @@ describe('limpiarSalasVacias', () => {
     await limpiarSalasVacias();
 
     const filtro = roomFindMany.mock.calls[0]![0].where;
-    expect(filtro.status).toBe('WAITING');
     expect(filtro.players).toEqual({ none: {} });
     expect(filtro.createdAt.lt).toBeInstanceOf(Date);
+  });
+
+  it('también borra las terminadas: al irse el último jugador la sala queda FINISHED', async () => {
+    roomFindMany.mockResolvedValue([]);
+
+    await limpiarSalasVacias();
+
+    const filtro = roomFindMany.mock.calls[0]![0].where;
+    expect(filtro.status).toEqual({ in: ['WAITING', 'FINISHED'] });
   });
 
   it('avisa al lobby solo si borró algo', async () => {

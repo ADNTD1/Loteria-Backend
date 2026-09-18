@@ -37,8 +37,12 @@ export const startRoomJanitor = (): void => {
 };
 
 /**
- * Borra las salas en WAITING que llevan EMPTY_ROOM_TTL_MS sin jugadores.
- * Consulta la base de datos en vez de un mapa en memoria, así sigue
+ * Borra las salas sin jugadores que llevan más de EMPTY_ROOM_TTL_MS.
+ *
+ * Incluye las FINISHED a propósito: cuando el último jugador se va, la sala
+ * se marca como terminada, y si solo se borraran las WAITING se quedarían
+ * acumuladas en la base para siempre. El historial de partidas vive en Match,
+ * no aquí. Consulta la base de datos en vez de un mapa en memoria, así sigue
  * funcionando después de reiniciar el servidor.
  */
 export const limpiarSalasVacias = async (): Promise<number> => {
@@ -46,7 +50,7 @@ export const limpiarSalasVacias = async (): Promise<number> => {
 
   const vacias = await prisma.room.findMany({
     where: {
-      status: "WAITING",
+      status: { in: ["WAITING", "FINISHED"] },
       createdAt: { lt: limite },
       players: { none: {} },
     },
