@@ -7,6 +7,7 @@ import {
   getAvailableRooms,
   getRoomPlayers,
   startRoomJanitor,
+  cerrarSalasHuerfanas,
 } from "../services/room.service.js";
 import { registerRoomHandlers } from "./room.socket.js";
 import { registerGameHandlers } from "./game.socket.js";
@@ -73,6 +74,12 @@ export const initGameSessionSocket = (httpServer: HTTPServer) => {
 
   roomEvents.on("room:playersChanged", async ({ roomCode }) => {
     io.to(roomCode).emit("room:players", await getRoomPlayers(roomCode));
+  });
+
+  // Las partidas viven en memoria: si el servidor se reinició, las salas que
+  // quedaron "jugando" ya no tienen partida detrás y hay que cerrarlas.
+  void cerrarSalasHuerfanas().then((cerradas) => {
+    if (cerradas > 0) console.log(`Salas huérfanas cerradas al arrancar: ${cerradas}`);
   });
 
   // Borrado automático de salas que llevan 1 minuto sin jugadores.
