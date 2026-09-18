@@ -14,8 +14,17 @@ const options: swaggerJSDoc.Options = {
         description: 'Servidor de desarrollo local',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Introduce tu token JWT obtenido en /api/users/login (sin la palabra Bearer)',
+        },
+      },
+    },
   },
-
   apis: ['./src/routes/*.ts', './src/controllers/*.ts'],
 };
 
