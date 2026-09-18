@@ -40,14 +40,14 @@ describe('BoardOperations', () => {
 
     it('no debería ganar si no hay patrón completado', () => {
       const calledCards = [board.cards[0]!, board.cards[1]!];
-      const result = BoardOperations.checkVictory(board, calledCards);
+      const result = BoardOperations.checkVictory(board, calledCards, 'FULL_BOARD');
       expect(result.won).toBe(false);
       expect(result.pattern).toBe(null);
     });
 
     it('debería detectar patrón FULL_BOARD', () => {
       const calledCards = [...board.cards]; // Todas las 16
-      const result = BoardOperations.checkVictory(board, calledCards);
+      const result = BoardOperations.checkVictory(board, calledCards, 'FULL_BOARD');
       expect(result.won).toBe(true);
       expect(result.pattern).toBe('FULL_BOARD');
     });
@@ -55,17 +55,46 @@ describe('BoardOperations', () => {
     it('debería detectar patrón LINE (horizontal)', () => {
       // Línea 0, 1, 2, 3
       const calledCards = [board.cards[0]!, board.cards[1]!, board.cards[2]!, board.cards[3]!];
-      const result = BoardOperations.checkVictory(board, calledCards);
+      const result = BoardOperations.checkVictory(board, calledCards, 'LINE');
       expect(result.won).toBe(true);
       expect(result.pattern).toBe('LINE');
+    });
+
+    it('no debería ganar con línea si el modo es FULL_BOARD', () => {
+      const calledCards = [board.cards[0]!, board.cards[1]!, board.cards[2]!, board.cards[3]!];
+      const result = BoardOperations.checkVictory(board, calledCards, 'FULL_BOARD');
+      expect(result.won).toBe(false);
     });
 
     it('debería detectar patrón CORNERS (esquinas)', () => {
       // Esquinas 0, 3, 12, 15
       const calledCards = [board.cards[0]!, board.cards[3]!, board.cards[12]!, board.cards[15]!];
-      const result = BoardOperations.checkVictory(board, calledCards);
+      const result = BoardOperations.checkVictory(board, calledCards, 'CORNERS');
       expect(result.won).toBe(true);
       expect(result.pattern).toBe('CORNERS');
+    });
+
+    it('debería detectar patrón CENTER_2X2', () => {
+      // Centro 5, 6, 9, 10
+      const calledCards = [board.cards[5]!, board.cards[6]!, board.cards[9]!, board.cards[10]!];
+      const result = BoardOperations.checkVictory(board, calledCards, 'CENTER_2X2');
+      expect(result.won).toBe(true);
+      expect(result.pattern).toBe('CENTER_2X2');
+    });
+
+    it('debería detectar patrón SQUARE_2X2 (cuadrito en cualquier esquina)', () => {
+      // Cuadrito inferior derecho 10, 11, 14, 15
+      const calledCards = [board.cards[10]!, board.cards[11]!, board.cards[14]!, board.cards[15]!];
+      const result = BoardOperations.checkVictory(board, calledCards, 'SQUARE_2X2');
+      expect(result.won).toBe(true);
+      expect(result.pattern).toBe('SQUARE_2X2');
+    });
+
+    it('modo desconocido cae al default FULL_BOARD', () => {
+      const calledCards = [...board.cards];
+      const result = BoardOperations.checkVictory(board, calledCards, 'MODO_INVENTADO');
+      expect(result.won).toBe(true);
+      expect(result.pattern).toBe('FULL_BOARD');
     });
   });
 });

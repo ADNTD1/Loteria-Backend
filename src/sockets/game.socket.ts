@@ -52,6 +52,11 @@ export const registerGameHandlers = (io: Server, socket: Socket): void => {
       const room = await assertRoomHost(code, accountNumber);
 
       const players = await getRoomPlayers(code);
+      if (players.length < 2) {
+        fail(ack, new GameSessionError("Se necesitan al menos 2 jugadores para iniciar la partida"));
+        return;
+      }
+
       const allCards = await cardRepository.findAll();
 
       // RF-04: las tablas ya se asignaron cuando cada jugador se unio a la sala.

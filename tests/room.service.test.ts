@@ -112,11 +112,16 @@ describe('createRoom', () => {
     const events: string[] = [];
     roomEvents.on('rooms:changed', () => events.push('rooms:changed'));
 
-    const room = await createRoom(host.accountNumber, 'La Cantina', 4, 'ElHost');
+    const room = await createRoom(host.accountNumber, 'La Cantina', 4, 'LINE', 'ElHost');
 
     expect(roomCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ name: 'La Cantina', maxPlayers: 4, status: 'WAITING' }),
+        data: expect.objectContaining({
+          name: 'La Cantina',
+          maxPlayers: 4,
+          status: 'WAITING',
+          winMode: 'LINE',
+        }),
       })
     );
     expect(roomPlayerCreate).toHaveBeenCalled();
