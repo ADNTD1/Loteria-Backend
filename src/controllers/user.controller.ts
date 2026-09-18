@@ -44,42 +44,28 @@ const activeSessions = new Set<string>();
 export const loginWithAccountNumber = async (req: Request, res: Response) => {
   try {
     const { accountNumber } = req.body;
-
     if (!accountNumber) {
       return res.status(400).json({
         ok: false,
         message: "El número de cuenta es obligatorio",
       });
     }
-
     const cleanAccountNumber = String(accountNumber).trim();
-
-    // 1. REGLA: Verificar si ya hay una sesión abierta con esta cuenta
-    if (activeSessions.has(cleanAccountNumber)) {
-      return res.status(403).json({
-        ok: false,
-        message: "Ya hay una sesión activa con este número de cuenta",
-      });
-    }
-
-    // 2. Buscar si el usuario existe en la base de datos
+    // 1. Buscar si el usuario existe en la base de datos
     const user = await prisma.user.findUnique({
       where: { accountNumber: cleanAccountNumber },
     });
-
     if (!user) {
       return res.status(404).json({
         ok: false,
         message: "Número de cuenta no registrado en el sistema",
       });
     }
-
-    // 3. Registrar la cuenta como sesión activa
+    // 2. Si ya tenía sesión previa (por ejemplo, cerró la pestaña o recargó F5),
+    // simplemente la renovamos en lugar de bloquearlo con error 403
     activeSessions.add(cleanAccountNumber);
-
-    // 4. Generar token y responder
+    // 3. Generar nuevo token y responder
     const token = generateToken(user.accountNumber);
-
     return res.json({
       ok: true,
       message: "Acceso correcto",
