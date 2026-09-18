@@ -47,6 +47,30 @@ export const getRandomBoard = async (req: Request, res: Response) => {
 };
 
 
+/**
+ * Obtiene todas las cartas disponibles y devuelve un mazo barajado aleatoriamente.
+ *
+ * @route GET /api/cards/shuffle (ajusta según tu ruta real)
+ * @param {Request} req - Objeto de solicitud de Express (no se usan parámetros en este caso).
+ * @param {Response} res - Objeto de respuesta de Express.
+ * @returns {Promise<Response>} Respuesta JSON con el mazo de cartas barajado.
+ *
+ * @throws {AppError} 404 - Si no se encuentran cartas en el repositorio.
+ *
+ * @example
+ * // Respuesta exitosa (200)
+ * {
+ *   "ok": true,
+ *   "data": [ { "id": 1, "name": "..." }, { "id": 2, "name": "..." }, ... ]
+ * }
+ *
+ * @example
+ * // Respuesta de error (404)
+ * {
+ *   "ok": false,
+ *   "message": "No se encontraron cartas para barajear"
+ * }
+ */
 export const getShuffledDeck = async (req: Request, res: Response) => {
   const cards = await cardRepository.findAll();
 
