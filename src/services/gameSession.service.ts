@@ -21,16 +21,18 @@ const INITIAL_CALL_DELAY_MS = 10000;
 const CALL_INTERVAL_MS = 4000;
 
 /**
- * Puntos por patrón: entre menos formas hay de completarlo, más vale.
- * Línea (10 posiciones) y cuadrito (9 posiciones) son los más fáciles;
- * esquinas y centro solo se arman de una forma; la llena es el cierre.
+ * Puntos por patrón: entre menos formas hay de armarlo y más cartas pide,
+ * más vale. Cada patrón se canta una sola vez por partida.
  */
 export const PATTERN_POINTS: Record<WinPattern, number> = {
-  LINE: 1,
-  SQUARE_2X2: 1,
-  CORNERS: 2,
-  CENTER_2X2: 2,
-  FULL_BOARD: 5,
+  LINE: 1,        // chorro: 8 posiciones (4 filas + 4 columnas), 4 cartas
+  SQUARE_2X2: 1,  // cuadrito: 9 posiciones, 4 cartas
+  DIAGONAL: 2,    // 2 posiciones, 4 cartas
+  CORNERS: 2,     // 1 posición, 4 cartas
+  CENTER_2X2: 2,  // 1 posición, 4 cartas
+  ESCUADRA: 3,    // 4 posiciones, 7 cartas
+  EQUIS: 4,       // 1 posición, 8 cartas
+  FULL_BOARD: 6,  // las 16, y cierra la partida
 };
 
 /** Por qué terminó la partida. */

@@ -16,7 +16,10 @@ export const roomEvents = new EventEmitter();
 export class RoomError extends Error {}
 
 // Modos de victoria válidos; el host puede elegir varios.
-export const VALID_WIN_MODES = ["LINE", "CORNERS", "CENTER_2X2", "SQUARE_2X2", "FULL_BOARD"] as const;
+export const VALID_WIN_MODES = [
+  "LINE", "DIAGONAL", "ESCUADRA", "EQUIS",
+  "CORNERS", "CENTER_2X2", "SQUARE_2X2", "FULL_BOARD",
+] as const;
 
 // --- Auto-borrado de salas vacías ---
 // Si una sala en WAITING se queda sin jugadores, se borra pasado EMPTY_ROOM_TTL_MS.

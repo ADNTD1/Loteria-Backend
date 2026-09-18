@@ -111,4 +111,71 @@ describe('BoardOperations', () => {
       expect(result.pattern).toBe(null);
     });
   });
+
+  describe('patrones independientes', () => {
+    let board: playerBoard;
+
+    // Tabla 4x4 con las casillas numeradas 0..15 de izquierda a derecha.
+    const marcar = (...indices: number[]) => indices.map((i) => board.cards[i]!);
+
+    beforeEach(() => {
+      board = { accountNumber: 'test', cards: mockDeck.slice(0, 16) };
+    });
+
+    it('el chorro NO se completa con una diagonal', () => {
+      const diagonal = marcar(0, 5, 10, 15);
+      expect(BoardOperations.completedPatterns(board, diagonal, ['LINE'])).toEqual([]);
+    });
+
+    it('la diagonal es su propio patrón, en cualquiera de las dos', () => {
+      expect(BoardOperations.completedPatterns(board, marcar(0, 5, 10, 15), ['DIAGONAL']))
+        .toEqual(['DIAGONAL']);
+      expect(BoardOperations.completedPatterns(board, marcar(3, 6, 9, 12), ['DIAGONAL']))
+        .toEqual(['DIAGONAL']);
+    });
+
+    it('la equis pide las dos diagonales completas', () => {
+      const soloUna = marcar(0, 5, 10, 15);
+      expect(BoardOperations.completedPatterns(board, soloUna, ['EQUIS'])).toEqual([]);
+
+      const ambas = marcar(0, 5, 10, 15, 3, 6, 9, 12);
+      expect(BoardOperations.completedPatterns(board, ambas, ['EQUIS'])).toEqual(['EQUIS']);
+    });
+
+    it('la escuadra vale en cualquiera de las cuatro esquinas', () => {
+      const superiorIzquierda = marcar(0, 1, 2, 3, 4, 8, 12);
+      const inferiorDerecha = marcar(12, 13, 14, 15, 3, 7, 11);
+
+      expect(BoardOperations.completedPatterns(board, superiorIzquierda, ['ESCUADRA']))
+        .toEqual(['ESCUADRA']);
+      expect(BoardOperations.completedPatterns(board, inferiorDerecha, ['ESCUADRA']))
+        .toEqual(['ESCUADRA']);
+    });
+
+    it('el cuadrito vale en cualquier posición, pero es un solo patrón', () => {
+      const esquina = marcar(0, 1, 4, 5);
+      const centro = marcar(5, 6, 9, 10);
+
+      expect(BoardOperations.completedPatterns(board, esquina, ['SQUARE_2X2']))
+        .toEqual(['SQUARE_2X2']);
+      expect(BoardOperations.completedPatterns(board, centro, ['SQUARE_2X2']))
+        .toEqual(['SQUARE_2X2']);
+    });
+
+    it('una equis también completa diagonal, y son dos patrones distintos', () => {
+      const equis = marcar(0, 5, 10, 15, 3, 6, 9, 12);
+      const completados = BoardOperations.completedPatterns(board, equis, ['EQUIS', 'DIAGONAL', 'LINE']);
+
+      expect(completados).toContain('EQUIS');
+      expect(completados).toContain('DIAGONAL');
+      expect(completados).not.toContain('LINE');
+    });
+
+    it('devuelve los patrones de mayor a menor valor', () => {
+      const escuadra = marcar(0, 1, 2, 3, 4, 8, 12);
+      const completados = BoardOperations.completedPatterns(board, escuadra, ['LINE', 'ESCUADRA']);
+
+      expect(completados).toEqual(['ESCUADRA', 'LINE']); // la fila 0-3 también es chorro
+    });
+  });
 });

@@ -60,10 +60,25 @@ export class BoardOperations {
 
     const isLineComplete = (indexes: number[]) => indexes.every((i) => marks[i]);
 
+    // Chorro: filas y columnas. Las diagonales son su propio patrón.
     const lines: number[][] = [
       [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], // Horizontales
       [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15], // Verticales
-      [0, 5, 10, 15], [3, 6, 9, 12], // Diagonales
+    ];
+
+    const diagonals: number[][] = [
+      [0, 5, 10, 15], [3, 6, 9, 12],
+    ];
+
+    // Equis: las dos diagonales completas.
+    const equis: number[] = [0, 3, 5, 6, 9, 10, 12, 15];
+
+    // Escuadra: una fila y una columna que se juntan en cualquier esquina.
+    const escuadras: number[][] = [
+      [0, 1, 2, 3, 4, 8, 12],    // superior izquierda
+      [0, 1, 2, 3, 7, 11, 15],   // superior derecha
+      [0, 4, 8, 12, 13, 14, 15], // inferior izquierda
+      [3, 7, 11, 15, 12, 13, 14],// inferior derecha
     ];
 
     const corners: number[] = [0, 3, 12, 15];
@@ -76,6 +91,9 @@ export class BoardOperations {
 
     const checks: Record<string, () => boolean> = {
       LINE: () => lines.some(isLineComplete),
+      DIAGONAL: () => diagonals.some(isLineComplete),
+      EQUIS: () => isLineComplete(equis),
+      ESCUADRA: () => escuadras.some(isLineComplete),
       CORNERS: () => isLineComplete(corners),
       CENTER_2X2: () => isLineComplete(center2x2),
       SQUARE_2X2: () => square2x2.some(isLineComplete),
@@ -83,7 +101,11 @@ export class BoardOperations {
     };
 
     const enabled = new Set(targetWinModes);
-    const priority: WinPattern[] = ["FULL_BOARD", "CENTER_2X2", "SQUARE_2X2", "CORNERS", "LINE"];
+    // De más difícil a más fácil: si se cantan varios, primero se reporta el mayor.
+    const priority: WinPattern[] = [
+      "FULL_BOARD", "EQUIS", "ESCUADRA", "CENTER_2X2",
+      "CORNERS", "DIAGONAL", "SQUARE_2X2", "LINE",
+    ];
 
     return priority.filter((pattern) => enabled.has(pattern) && checks[pattern]!());
   }
