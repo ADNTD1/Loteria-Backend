@@ -15,7 +15,9 @@ router.get(
 // POST http://localhost:3000/api/users/guest
 router.post(
   "/guest",
-  rateLimit({ windowMs: 60_000, limit: 10 }),
+  // Varios jugadores suelen entrar desde la misma red (salón, casa), así que
+  // comparten IP: con 10 por minuto se bloqueaban entre ellos.
+  rateLimit({ windowMs: 60_000, limit: 60 }),
   loginGuest
 );
 
