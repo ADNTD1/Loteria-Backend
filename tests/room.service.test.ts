@@ -88,7 +88,7 @@ const baseRoom = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   AliasesStore.clearRoom('ABC-123');
   RoomBoardsStore.clear('ABC-123');
   roomEvents.removeAllListeners();
